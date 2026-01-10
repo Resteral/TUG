@@ -33,16 +33,8 @@ import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Players", href: "/players", icon: Users },
-  { name: "Lobbies", href: "/lobbies", icon: Gamepad2 }, // Added Lobbies tab for ELO draft and active games
-  { name: "Leagues", href: "/leagues", icon: Trophy },
-  { name: "Tournaments", href: "/tournaments", icon: Trophy },
-  { name: "Schedule", href: "/schedule", icon: Calendar },
-  { name: "Betting", href: "/betting", icon: Target },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Leaderboard", href: "/leaderboard", icon: TrendingUp },
-  { name: "Announcements", href: "/announcements", icon: Bell },
+  { name: "Lobby", href: "/", icon: Home },
+  // { name: "My Matches", href: "/matches", icon: Gamepad2 }, // Implement later
 ]
 
 export function Navigation() {
@@ -122,31 +114,6 @@ export function Navigation() {
           <nav className="hidden md:flex items-center space-x-1">
             {navigation.map((item) => {
               const Icon = item.icon
-              if (item.submenu) {
-                return (
-                  <DropdownMenu key={item.name}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant={isActive(item.href) ? "secondary" : "ghost"}
-                        size="sm"
-                        className="flex items-center space-x-2 hover:bg-primary/10 hover:text-primary"
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
-                      {item.submenu.map((subItem) => (
-                        <DropdownMenuItem key={subItem.name} asChild>
-                          <Link href={subItem.href}>
-                            <span>{subItem.name}</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )
-              }
               return (
                 <Link key={item.name} href={item.href}>
                   <Button
@@ -235,39 +202,13 @@ export function Navigation() {
                 <div className="flex flex-col space-y-4 mt-8">
                   {navigation.map((item) => {
                     const Icon = item.icon
-                    if (item.submenu) {
-                      return (
-                        <DropdownMenu key={item.name}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant={isActive(item.href) ? "secondary" : "ghost"}
-                              size="sm"
-                              className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors"
-                            >
-                              <Icon className="h-5 w-5" />
-                              <span>{item.name}</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56" align="end" forceMount>
-                            {item.submenu.map((subItem) => (
-                              <DropdownMenuItem key={subItem.name} asChild>
-                                <Link href={subItem.href} onClick={() => setMobileMenuOpen(false)}>
-                                  <span>{subItem.name}</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )
-                    }
                     return (
                       <Link
                         key={item.name}
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                          isActive(item.href) ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50"
-                        }`}
+                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${isActive(item.href) ? "bg-secondary text-secondary-foreground" : "hover:bg-secondary/50"
+                          }`}
                       >
                         <Icon className="h-5 w-5" />
                         <span>{item.name}</span>

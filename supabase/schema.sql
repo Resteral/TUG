@@ -2,10 +2,7 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
--- USERS TABLE (Extending Auth)
--- Assumes a public profile table usually exists, but we'll modify/create 'users' to hold game data.
--- Ideally, we link this to auth.users via a trigger, but for simplicity here we assume a public users table.
-
+-- USERS TABLE
 create table if not exists public.users (
   id uuid references auth.users not null primary key,
   username text unique,
@@ -14,10 +11,8 @@ create table if not exists public.users (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Enable RLS
 alter table public.users enable row level security;
 
--- Policies
 create policy "Public profiles are viewable by everyone." on public.users
   for select using (true);
 
@@ -28,18 +23,33 @@ create policy "Users can update own profile." on public.users
   for update using (auth.uid() = id);
 
 -- TRANSACTIONS TABLE
-create type transaction_type as enum ('deposit', 'withdrawal', 'wager_lock', 'wager_payout', 'refund');
-create type transaction_status as enum ('pending', 'completed', 'failed');
-create type payment_provider as enum ('stripe', 'crypto', 'platform');
+-- Create types safely
+do $$ begin
+    create type transaction_type as enum ('deposit', 'withdrawal', 'wager_lock', 'wager_payout', 'refund');
+exception
+    when duplicate_object then null;
+end $$;
+
+do $$ begin
+    create type transaction_status as enum ('pending', 'completed', 'failed');
+exception
+    when duplicate_object then null;
+end $$;
+
+do $$ begin
+    create type payment_provider as enum ('stripe', 'crypto', 'platform');
+exception
+    when duplicate_object then null;
+end $$;
 
 create table if not exists public.transactions (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.users(id) not null,
-  amount numeric not null, -- Positive for deposit/payout, Negative for withdrawal/wager_lock
+  amount numeric not null,
   type transaction_type not null,
   provider payment_provider not null,
   status transaction_status default 'pending' not null,
-  external_id text, -- Stripe PaymentIntent ID or Tx Hash
+  external_id text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -48,8 +58,12 @@ alter table public.transactions enable row level security;
 create policy "Users can view own transactions." on public.transactions
   for select using (auth.uid() = user_id);
 
--- MATCHES TABLE
-create type match_status as enum ('open', 'in_progress', 'completed', 'disputed', 'cancelled');
+-- MATCHES TABLE (Create table first)
+do $$ begin
+    create type match_status as enum ('open', 'in_progress', 'completed', 'disputed', 'cancelled');
+exception
+    when duplicate_object then null;
+end $$;
 
 create table if not exists public.matches (
   id uuid default uuid_generate_v4() primary key,
@@ -57,13 +71,26 @@ create table if not exists public.matches (
   wager_amount numeric not null check (wager_amount >= 0),
   team_size int not null check (team_size between 1 and 6),
   status match_status default 'open' not null,
-  winner_team_id int, -- 1 or 2
+  winner_team_id int,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 alter table public.matches enable row level security;
 
+-- MATCH PARTICIPANTS TABLE (Create table next)
+create table if not exists public.match_participants (
+  match_id uuid references public.matches(id) not null,
+  user_id uuid references public.users(id) not null,
+  team_id int not null check (team_id in (1, 2)),
+  status text default 'joined',
+  joined_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (match_id, user_id)
+);
+
+alter table public.match_participants enable row level security;
+
+-- NOW ADD POLICIES FOR MATCHES (Since participant table exists)
 create policy "Matches are viewable by everyone." on public.matches
   for select using (true);
 
@@ -78,25 +105,14 @@ create policy "Participants can update match status." on public.matches
     )
   );
 
--- MATCH PARTICIPANTS TABLE
-create table if not exists public.match_participants (
-  match_id uuid references public.matches(id) not null,
-  user_id uuid references public.users(id) not null,
-  team_id int not null check (team_id in (1, 2)),
-  status text default 'joined', -- joined, ready
-  joined_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  primary key (match_id, user_id)
-);
-
-alter table public.match_participants enable row level security;
-
+-- POLICIES FOR PARTICIPANTS
 create policy "Participants are viewable by everyone." on public.match_participants
   for select using (true);
 
 create policy "Users can join matches." on public.match_participants
   for insert with check (auth.uid() = user_id);
 
--- Trigger to handle updated_at
+-- Trigger definition
 create or replace function update_modified_column()
 returns trigger as $$
 begin
@@ -105,6 +121,7 @@ begin
 end;
 $$ language 'plpgsql';
 
+drop trigger if exists update_matches_modtime on public.matches;
 create trigger update_matches_modtime
     before update on public.matches
     for each row execute procedure update_modified_column();

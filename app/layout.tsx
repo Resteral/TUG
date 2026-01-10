@@ -6,16 +6,10 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navigation } from "@/components/navigation"
 import { AuthProvider } from "@/lib/auth-context"
-import { DraftAlertProvider } from "@/lib/contexts/draft-alert-context"
-import DraftScreenOverlay from "@/components/draft-alert/draft-screen-overlay"
-import { LobbyAlertSystem } from "@/components/global/lobby-alert-system"
-import { ActiveDraftTracker } from "@/components/navigation/active-draft-tracker"
-import ActiveMatchNotification from "@/components/navigation/active-match-notification"
-import MonacoEnvironment from "@/components/monaco-environment"
 
 export const metadata: Metadata = {
-  title: "TUG E-Sports Lobbies",
-  description: "Premier ELO-based e-sports lobbies with competitive gaming, betting, and analytics",
+  title: "TUG Wagering",
+  description: "1v1-6v6 Wagering Platform",
   generator: "v0.app",
 }
 
@@ -38,17 +32,10 @@ html {
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <DraftAlertProvider>
-              <MonacoEnvironment />
-              <div className="min-h-screen bg-background">
-                <Navigation />
-                <main className="pt-16">{children}</main>
-                <DraftScreenOverlay />
-                <LobbyAlertSystem />
-                <ActiveDraftTracker />
-                <ActiveMatchNotification />
-              </div>
-            </DraftAlertProvider>
+            <div className="min-h-screen bg-background">
+              <Navigation />
+              <main className="pt-16">{children}</main>
+            </div>
           </AuthProvider>
         </ThemeProvider>
       </body>
