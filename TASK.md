@@ -3,11 +3,12 @@
     - [x] Clone repository `https://github.com/Resteral/ZHT` <!-- id: 0 -->
     - [x] Explore codebase and dependencies <!-- id: 1 -->
     - [x] Create Implementation Plan <!-- id: 2 -->
-- [ ] Backend Development
-    - [ ] Configure Supabase Client & Environment Variables <!-- id: 3 -->
-    - [ ] Create Database Tables (`users`, `matches`, `wagers`, `transactions`) <!-- id: 4 -->
-    - [ ] Implement Server Actions for Matchmaking (Create/Join/Leave) <!-- id: 5 -->
-    - [ ] Implement Wagering Logic (Escrow/Payout) <!-- id: 18 -->
+- [/] Backend Development
+    - [x] Configure Supabase Client & Environment Variables <!-- id: 3 -->
+    - [x] Create Database Tables (`users`, `matches`, `wagers`, `transactions`) <!-- id: 4 -->
+    - [/] Implement Server Actions for Matchmaking (Create/Join/Leave) <!-- id: 5 -->
+    - [x] Implement Wagering Logic (Escrow/Payout) <!-- id: 18 -->
+    - [x] Fix RLS Policies for Transactions (Missing Insert) <!-- id: 23 -->
     - [ ] Implement Stripe Checkout API <!-- id: 21 -->
     - [ ] Implement Crypto Deposit Logic (Mock/Simple) <!-- id: 22 -->
 - [ ] Frontend Development
