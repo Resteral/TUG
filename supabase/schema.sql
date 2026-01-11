@@ -125,3 +125,13 @@ drop trigger if exists update_matches_modtime on public.matches;
 create trigger update_matches_modtime
     before update on public.matches
     for each row execute procedure update_modified_column();
+
+-- ATOMIC BALANCE INCREMENT
+create or replace function increment_balance(user_id uuid, amount numeric)
+returns void as $$
+begin
+  update public.users
+  set balance = balance + amount
+  where id = user_id;
+end;
+$$ language plpgsql;
