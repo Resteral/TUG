@@ -34,6 +34,7 @@ import Image from "next/image"
 
 const navigation = [
   { name: "Lobby", href: "/", icon: Home },
+  { name: "Wallet", href: "/wallet", icon: DollarSign },
   // { name: "My Matches", href: "/matches", icon: Gamepad2 }, // Implement later
 ]
 
