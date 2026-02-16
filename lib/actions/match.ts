@@ -1,95 +1,109 @@
-
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { isModeAllowedForGame } from "@/lib/game-config"
 
 export async function createMatch(formData: FormData) {
-  const supabase = await createClient()
+    const supabase = await createClient()
 
-  const wagerAmount = parseFloat(formData.get("wagerAmount")?.toString() || "0")
-  const teamSize = parseInt(formData.get("teamSize")?.toString() || "1")
-  
-  if (wagerAmount <= 0) {
-    return { error: "Wager must be positive" }
-  }
+    const wagerAmount = parseFloat(formData.get("wagerAmount")?.toString() || "0")
+    const teamSize = parseInt(formData.get("teamSize")?.toString() || "1")
+    const game = formData.get("game")?.toString() || "zealot_hockey"
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-      return { error: "Not authenticated" }
-  }
+    if (wagerAmount <= 0) {
+        return { error: "Wager must be positive" }
+    }
 
-  // Check balance (optimistic check)
-  const { data: profile } = await supabase.from("users").select("balance").eq("id", user.id).single()
-  
-  if (!profile || profile.balance < wagerAmount) {
-      return { error: "Insufficient funds" }
-  }
+    // Validate team size for the selected game
+    const modeId = `${teamSize}v${teamSize}`
+    if (!isModeAllowedForGame(game, modeId)) {
+        return { error: `${modeId} is not allowed for this game` }
+    }
 
-  // Atomic Deduct (Lock funds)
-  const { error: txError } = await supabase.rpc('increment_balance', {
-      user_id: user.id,
-      amount: -wagerAmount
-  })
+    // Get current user
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: "Not authenticated" }
+    }
 
-  // If RPC fails (likely due to constraint check balance >= 0 if implemented, or other DB err)
-  // The constraint check `check (balance >= 0)` in schema ensures this fails if insufficient funds
-  if (txError) return { error: "Transaction failed: Insufficient funds" }
+    // Check balance (optimistic check)
+    const { data: profile } = await supabase.from("users").select("balance").eq("id", user.id).single()
 
-  // Log Transaction
-  const { error: logError } = await supabase.from("transactions").insert({
-      user_id: user.id,
-      amount: -wagerAmount,
-      type: 'wager_lock',
-      provider: 'platform',
-      status: 'completed',
-      external_id: 'match_creation_lock' 
-      // Ideally we'd link to match_id but we don't have it yet. 
-      // We could create match first then lock, but then we have a match without funds if lock fails.
-      // Better: Create uuid in code or update transaction later. For now, this is acceptable.
-  })
+    if (!profile || profile.balance < wagerAmount) {
+        return { error: "Insufficient funds" }
+    }
 
-  if (logError) {
-      // Critical error: successfully deducted but failed to log. 
-      // In real prod, this needs alert.
-      console.error("Failed to log transaction", logError)
-  }
-
-  // Create Match
-  const { data: match, error: matchError } = await supabase.from("matches").insert({
-      creator_id: user.id,
-      wager_amount: wagerAmount,
-      team_size: teamSize,
-      status: "open"
-  }).select().single()
-
-  if (matchError) {
-      // Refund on failure
-      await supabase.rpc('increment_balance', { user_id: user.id, amount: wagerAmount })
-      // Log Refund
-      await supabase.from("transactions").insert({
+    // Atomic Deduct (Lock funds)
+    const { error: txError } = await supabase.rpc("increment_balance", {
         user_id: user.id,
-        amount: wagerAmount,
-        type: 'refund',
-        provider: 'platform',
-        status: 'completed',
-        external_id: 'match_creation_failed_refund'
-      })
-      return { error: "Failed to create match" }
-  }
+        amount: -wagerAmount,
+    })
 
-  // Add Creator as Participant
-  await supabase.from("match_participants").insert({
-      match_id: match.id,
-      user_id: user.id,
-      team_id: 1, // Creator is always Team 1
-      status: "joined"
-  })
+    // If RPC fails (likely due to constraint check balance >= 0 if implemented, or other DB err)
+    // The constraint check `check (balance >= 0)` in schema ensures this fails if insufficient funds
+    if (txError) return { error: "Transaction failed: Insufficient funds" }
 
-  revalidatePath("/lobby")
-  redirect(`/match/${match.id}`)
+    // Log Transaction
+    const { error: logError } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        amount: -wagerAmount,
+        type: "wager_lock",
+        provider: "platform",
+        status: "completed",
+        external_id: "match_creation_lock",
+        // Ideally we'd link to match_id but we don't have it yet.
+        // We could create match first then lock, but then we have a match without funds if lock fails.
+        // Better: Create uuid in code or update transaction later. For now, this is acceptable.
+    })
+
+    if (logError) {
+        // Critical error: successfully deducted but failed to log.
+        // In real prod, this needs alert.
+        console.error("Failed to log transaction", logError)
+    }
+
+    // Create Match
+    const { data: match, error: matchError } = await supabase
+        .from("matches")
+        .insert({
+            creator_id: user.id,
+            wager_amount: wagerAmount,
+            team_size: teamSize,
+            game: game,
+            status: "open",
+        })
+        .select()
+        .single()
+
+    if (matchError) {
+        // Refund on failure
+        await supabase.rpc("increment_balance", { user_id: user.id, amount: wagerAmount })
+        // Log Refund
+        await supabase.from("transactions").insert({
+            user_id: user.id,
+            amount: wagerAmount,
+            type: "refund",
+            provider: "platform",
+            status: "completed",
+            external_id: "match_creation_failed_refund",
+        })
+        return { error: "Failed to create match" }
+    }
+
+    // Add Creator as Participant
+    await supabase.from("match_participants").insert({
+        match_id: match.id,
+        user_id: user.id,
+        team_id: 1, // Creator is always Team 1
+        status: "joined",
+    })
+
+    revalidatePath("/")
+    redirect(`/match/${match.id}`)
 }
 
 export async function joinMatch(matchId: string, teamId: number) {
@@ -132,8 +146,8 @@ export async function joinMatch(matchId: string, teamId: number) {
 
     if (joinError) {
         // Refund
-         await supabase.rpc('increment_balance', { user_id: user.id, amount: match.wager_amount })
-         await supabase.from("transactions").insert({
+        await supabase.rpc('increment_balance', { user_id: user.id, amount: match.wager_amount })
+        await supabase.from("transactions").insert({
             user_id: user.id,
             amount: match.wager_amount,
             type: 'refund',
@@ -141,7 +155,7 @@ export async function joinMatch(matchId: string, teamId: number) {
             status: 'completed',
             external_id: `match_join_failed_${matchId}`
         })
-         return { error: "Failed to join" }
+        return { error: "Failed to join" }
     }
 
     revalidatePath(`/match/${matchId}`)
@@ -156,9 +170,9 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
     // 1. Verify match exists and user is a participant
     const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single()
     if (!match) return { error: "Match not found" }
-    
+
     if (match.status !== "open" && match.status !== "in_progress") {
-         return { error: "Match already completed or disputed" }
+        return { error: "Match already completed or disputed" }
     }
 
     // Check if user is participant
@@ -167,7 +181,7 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
         .eq("match_id", matchId)
         .eq("user_id", user.id)
         .single()
-    
+
     if (!participant) return { error: "You are not a participant" }
 
     // 2. Update Match Status and Result
@@ -175,10 +189,10 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
     // For MVP, we trust the reporter (or assume "Self-Report + Verify" is next step).
     // The plan says "Winner reports, Loser confirms". 
     // This action implements the REPORT step. If we want immediate payout for MVP:
-    
+
     // Let's implement immediate payout for MVP ease as per "Manual Verification" plan implies testing full flow.
     // But safely, let's just mark it as completed for now.
-    
+
     const { error: updateError } = await supabase.from("matches").update({
         status: "completed",
         winner_team_id: winnerTeamId,
@@ -202,7 +216,7 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
         const { count: totalParticipants } = await supabase.from("match_participants")
             .select("*", { count: 'exact', head: true })
             .eq("match_id", matchId)
-        
+
         // Payout per winner = (Total Pot / Winners Count) - Fee?
         // Assuming equal wager from everyone.
         // Total Pot = match.wager_amount * totalParticipants
@@ -215,7 +229,7 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
                 user_id: winner.user_id,
                 amount: payoutPerWinner
             })
-            
+
             await supabase.from("transactions").insert({
                 user_id: winner.user_id,
                 amount: payoutPerWinner,
