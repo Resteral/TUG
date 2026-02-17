@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { joinMatch } from "@/lib/actions/match"
 import { GameConfig, GameMode, getAllowedModesForGame } from "@/lib/game-config"
-import { Users, Trophy, Clock } from "lucide-react"
+import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle } from "lucide-react"
+import { readyCheckService } from "@/lib/services/ready-check-service"
+import { ReadyCheckModal } from "@/components/match/ready-check-modal"
+import { useAuth } from "@/lib/auth-context"
+import { lobbyQueueService } from "@/lib/services/lobby-queue-service"
+import { toast } from "sonner"
 
 interface GameQueueProps {
     game: GameConfig
@@ -45,6 +50,46 @@ export function GameQueue({ game }: GameQueueProps) {
         }
     }, [game.id])
 
+    const { user } = useAuth()
+    const [inQueue, setInQueue] = useState(false)
+    const [queueLoading, setQueueLoading] = useState(false)
+
+    useEffect(() => {
+        if (!user) return
+        const checkQueue = async () => {
+            const { data } = await supabase
+                .from("lobby_queue")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("status", "waiting")
+                .single()
+            setInQueue(!!data)
+        }
+        checkQueue()
+    }, [user])
+
+    const handleQueueAction = async () => {
+        if (!user) return
+        setQueueLoading(true)
+        try {
+            if (inQueue) {
+                await lobbyQueueService.leaveQueue(user.id)
+                setInQueue(false)
+                toast.info("Left queue")
+            } else {
+                // Default to 4v4 Snake Draft for now as per requirements
+                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4)
+                setInQueue(true)
+                toast.success("Joined queue for Snake Draft!")
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Failed to update queue status")
+        } finally {
+            setQueueLoading(false)
+        }
+    }
+
     const allowedModes = getAllowedModesForGame(game.id)
 
     if (loading) {
@@ -71,7 +116,25 @@ export function GameQueue({ game }: GameQueueProps) {
                         <span className="text-2xl">{game.icon}</span>
                         {game.name}
                     </CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        {user && (
+                            <Button
+                                onClick={handleQueueAction}
+                                disabled={queueLoading}
+                                variant={inQueue ? "destructive" : "default"}
+                                size="sm"
+                                className={inQueue ? "" : "bg-green-600 hover:bg-green-700"}
+                            >
+                                {queueLoading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : inQueue ? (
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                ) : (
+                                    <PlayCircle className="h-4 w-4 mr-2" />
+                                )}
+                                {inQueue ? "Leave Queue" : "Join Queue"}
+                            </Button>
+                        )}
                         {allowedModes.map((mode) => (
                             <Badge key={mode.id} variant="secondary" className={mode.color}>
                                 {mode.name}
@@ -132,6 +195,7 @@ export function GameQueue({ game }: GameQueueProps) {
                     </div>
                 )}
             </CardContent>
+            {user && <ReadyCheckModal userId={user.id} />}
         </Card>
     )
 }

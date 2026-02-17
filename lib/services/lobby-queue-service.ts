@@ -204,8 +204,6 @@ export const lobbyQueueService = {
         game: "Omega Strikers",
         tournament_type: "draft",
         max_participants: requiredPlayers,
-        status: "drafting",
-        start_date: new Date().toISOString(),
         player_pool_settings: {
           num_teams: playerCount,
           max_teams: playerCount,
@@ -213,8 +211,11 @@ export const lobbyQueueService = {
           players_per_team: 2,
           auction_budget: 1000,
           auto_start: true,
+          auto_assign_captains: true, // Enable auto-captain selection
+          captain_selection_mode: 'high_elo',
         },
         created_by: playersForMatch[0].user_id,
+        status: "ready_check", // Set status to ready_check instead of drafting
       })
       .select()
       .single()
@@ -226,10 +227,9 @@ export const lobbyQueueService = {
 
     // Add all players as participants
     const participantInserts = playersForMatch.map((player: any) => ({
-      tournament_id: tournament.id,
       user_id: player.user_id,
       joined_at: new Date().toISOString(),
-      status: "registered",
+      status: "pending_ready", // Set status to pending_ready
     }))
 
     const { error: participantError } = await supabase.from("tournament_participants").insert(participantInserts)
