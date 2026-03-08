@@ -121,7 +121,7 @@ export function ReadyCheckModal({ userId }: { userId: string }) {
                 if (tourney?.status === 'drafting') {
                     setOpen(false)
                     toast.success("All players ready! Starting draft...")
-                    router.push(`/tournaments/${tournamentId}?tab=snake_draft`)
+                    router.push(`/draft/room/${tournamentId}`)
                 }
             }
         }

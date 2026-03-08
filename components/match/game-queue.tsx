@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { joinMatch } from "@/lib/actions/match"
 import { GameConfig, GameMode, getAllowedModesForGame } from "@/lib/game-config"
 import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { readyCheckService } from "@/lib/services/ready-check-service"
 import { ReadyCheckModal } from "@/components/match/ready-check-modal"
 import { useAuth } from "@/lib/auth-context"
@@ -50,6 +51,7 @@ export function GameQueue({ game }: GameQueueProps) {
         }
     }, [game.id])
 
+    const router = useRouter()
     const { user } = useAuth()
     const [inQueue, setInQueue] = useState(false)
     const [queueLoading, setQueueLoading] = useState(false)
@@ -180,15 +182,14 @@ export function GameQueue({ game }: GameQueueProps) {
                                             </span>
                                         </div>
                                     </div>
-                                    <form
-                                        action={async () => {
-                                            await joinMatch(match.id, 2)
-                                        }}
+                                    <Button
+                                        onClick={() => router.push(`/match/${match.id}`)}
+                                        variant="default" 
+                                        size="sm" 
+                                        className="bg-green-600 hover:bg-green-700"
                                     >
-                                        <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
-                                            Join
-                                        </Button>
-                                    </form>
+                                        View Lobby
+                                    </Button>
                                 </CardContent>
                             </Card>
                         ))}

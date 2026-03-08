@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { joinMatch, reportResult } from "@/lib/actions/match"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function MatchRoom({ matchId }: { matchId: string }) {
     const [match, setMatch] = useState<any>(null)
@@ -63,13 +64,21 @@ export function MatchRoom({ matchId }: { matchId: string }) {
     // Handlers
     const handleJoin = async (teamId: number) => {
         const res = await joinMatch(matchId, teamId)
-        if (res?.error) alert(res.error)
+        if (res?.error) {
+            toast.error(res.error)
+        } else {
+            toast.success(`Joined Team ${teamId}!`)
+        }
     }
 
     const handleReport = async (winnerTeam: number) => {
         if (!confirm(`Are you sure Team ${winnerTeam} won?`)) return
         const res = await reportResult(matchId, winnerTeam)
-        if (res?.error) alert(res.error)
+        if (res?.error) {
+            toast.error(res.error)
+        } else {
+            toast.success(`Reported Team ${winnerTeam} as winner.`)
+        }
     }
 
     return (
