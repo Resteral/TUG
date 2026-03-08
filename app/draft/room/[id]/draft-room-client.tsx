@@ -23,8 +23,8 @@ export function DraftRoomClient({ tournamentId, userId }: { tournamentId: string
         )
     }
 
-    const draftType = draftSettings.draft_mode === "auction_draft" ? "auction"
-        : draftSettings.draft_mode === "linear_draft" ? "linear"
+    const draftType = draftSettings.draft_type === "auction" ? "auction"
+        : draftSettings.draft_type === "linear" ? "linear"
             : "snake"
 
     return (
@@ -33,35 +33,35 @@ export function DraftRoomClient({ tournamentId, userId }: { tournamentId: string
             teams={teams.map(t => ({
                 id: t.id,
                 name: t.name,
-                owner: t.owner_name,
-                ownerId: t.owner_id,
-                budget: t.budget,
+                owner: t.captain_name,
+                ownerId: t.captain_id,
+                budget: t.budget_remaining,
                 budgetRemaining: t.budget_remaining,
                 players: (t.players || []).map(p => ({
                     id: p.id,
                     username: p.username,
                     elo_rating: p.elo_rating,
-                    csvStats: p.csvStats || { goals: 0, assists: 0, saves: 0 },
+                    csvStats: p.csv_stats || { goals: 0, assists: 0, saves: 0 },
                     draftCost: p.draft_cost,
-                    draftPosition: p.draft_position
+                    draftPosition: undefined
                 }))
             }))}
             playerPool={availablePlayers.map(p => ({
                 id: p.id,
                 username: p.username,
                 elo_rating: p.elo_rating,
-                csvStats: p.csvStats || { goals: 0, assists: 0, saves: 0 },
-                totalScore: p.totalCsvScore || 0
+                csvStats: p.csv_stats || { goals: 0, assists: 0, saves: 0 },
+                totalScore: p.total_score || 0
             }))}
-            currentTurn={draftState.status === "in_progress" ? {
+            currentTurn={draftState.status === "active" ? {
                 teamIndex: draftState.current_team_index,
                 timeRemaining: draftState.time_remaining
             } : undefined}
             onPlayerDraft={async (playerId, teamId) => {
                 await draftPlayer(playerId, teamId)
             }}
-            isUserTurn={teams[draftState.current_team_index]?.owner_id === userId}
-            userTeamId={teams.find(t => t.owner_id === userId)?.id}
+            isUserTurn={teams[draftState.current_team_index]?.captain_id === userId}
+            userTeamId={teams.find(t => t.captain_id === userId)?.id}
         />
     )
 }
