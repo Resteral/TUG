@@ -40,7 +40,7 @@ const navigation = [
   { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Wallet", href: "/wallet", icon: DollarSign },
   { name: "Discord", href: "https://discord.gg/TBV2XxmUkc", icon: MessageSquare, external: true },
-  // { name: "My Matches", href: "/matches", icon: Gamepad2 }, // Implement later
+  { name: "My Matches", href: "/matches", icon: Gamepad2 },
 ]
 
 export function Navigation() {
