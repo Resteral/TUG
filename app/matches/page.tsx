@@ -66,6 +66,10 @@ export default function MyMatchesPage() {
     return (
         <div className="container mx-auto p-4 max-w-5xl space-y-12">
             <header className="flex flex-col gap-2">
+                <Button variant="ghost" className="w-fit -ml-4 mb-2 text-gray-500 hover:text-white" onClick={() => router.push("/")}>
+                    <ChevronRight className="w-4 h-4 rotate-180 mr-1" />
+                    Back to Lobby
+                </Button>
                 <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white">My Arena History</h1>
                 <p className="text-gray-400">Track your active competitions and review past performance.</p>
             </header>
@@ -120,8 +124,8 @@ function MatchCard({ match }: { match: any }) {
     return (
         <Link href={`/match/${match.id}`}>
             <Card className={`border-l-4 hover:translate-x-1 transition-all cursor-pointer ${match.status === 'completed'
-                    ? (isWinner ? 'border-l-green-500 bg-green-500/5' : 'border-l-red-800 bg-red-950/10')
-                    : 'border-l-blue-500 bg-blue-950/10'
+                ? (isWinner ? 'border-l-green-500 bg-green-500/5' : 'border-l-red-800 bg-red-950/10')
+                : 'border-l-blue-500 bg-blue-950/10'
                 }`}>
                 <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-6">

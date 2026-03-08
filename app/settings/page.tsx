@@ -3,6 +3,7 @@ import { ProfileSettings } from "@/components/profile/profile-settings"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 export default function SettingsPage() {
     return (
@@ -33,17 +34,4 @@ export default function SettingsPage() {
             </div>
         </div>
     )
-}
-
-function Card({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <div className={`rounded-xl border shadow-sm ${className}`}>{children}</div>
-}
-function CardHeader({ children }: { children: React.ReactNode }) {
-    return <div className="flex flex-col space-y-1.5 p-6">{children}</div>
-}
-function CardTitle({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <h3 className={`font-semibold leading-none tracking-tight ${className}`}>{children}</h3>
-}
-function CardContent({ children }: { children: React.ReactNode }) {
-    return <div className="p-6 pt-0">{children}</div>
 }
