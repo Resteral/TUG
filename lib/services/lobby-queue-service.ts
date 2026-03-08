@@ -37,53 +37,49 @@ export const lobbyQueueService = {
   ): Promise<QueueEntry> {
     console.log("[v0] User joining queue:", { userId, queueType, gameFormat, playerCount })
 
-    // Check if user is already in a queue
-    const { data: existing } = await supabase
-      .from("lobby_queue")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "waiting")
-      .single()
+    const ENTRY_FEE = 5.00
 
-    if (existing) {
-      throw new Error("You are already in a queue. Please leave your current queue first.")
+    const { data: result, error } = await supabase.rpc('join_pay_to_play_queue', {
+      p_user_id: userId,
+      p_queue_type: queueType,
+      p_game_format: gameFormat,
+      p_player_count: playerCount,
+      p_entry_fee: ENTRY_FEE
+    })
+
+    if (error) {
+      console.error("RPC Error:", error)
+      throw new Error("Failed to join queue. Please try again.")
     }
 
-    // Get user's ELO rating
-    const { data: userData } = await supabase.from("users").select("elo_rating").eq("id", userId).single()
-
-    const { data: queueEntry, error } = await supabase
-      .from("lobby_queue")
-      .insert({
-        user_id: userId,
-        queue_type: queueType,
-        game_format: gameFormat,
-        player_count: playerCount,
-        elo_rating: userData?.elo_rating || 1000,
-        joined_at: new Date().toISOString(),
-        status: "waiting",
-      })
-      .select()
-      .single()
-
-    if (error) throw error
+    if (result && result.success === false) {
+      throw new Error(result.error || "Failed to join queue")
+    }
 
     // Check if we can create a match immediately
     await this.checkAndCreateMatch(queueType, gameFormat, playerCount)
 
-    return queueEntry
+    return result.queue_entry as QueueEntry
   },
 
   async leaveQueue(userId: string): Promise<void> {
     console.log("[v0] User leaving queue:", userId)
 
-    const { error } = await supabase
-      .from("lobby_queue")
-      .update({ status: "cancelled" })
-      .eq("user_id", userId)
-      .eq("status", "waiting")
+    const ENTRY_FEE = 5.00
 
-    if (error) throw error
+    const { data: result, error } = await supabase.rpc('leave_pay_to_play_queue', {
+      p_user_id: userId,
+      p_entry_fee: ENTRY_FEE
+    })
+
+    if (error) {
+      console.error("RPC Error:", error)
+      throw new Error("Error leaving queue")
+    }
+
+    if (result && result.success === false) {
+      throw new Error(result.error || "Error leaving queue")
+    }
   },
 
   async getQueueStatus(queueType: "maxed" | "unmaxed", gameFormat: string, playerCount: number): Promise<LobbyQueue> {

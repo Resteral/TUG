@@ -108,7 +108,7 @@ export function UserInitializer() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 text-green-700">
             <CheckCircle className="h-4 w-4" />
-            <span>Account ready! You can create tournaments and join games.</span>
+            <span>Account ready! You can now join games.</span>
           </div>
         </CardContent>
       </Card>
@@ -123,7 +123,7 @@ export function UserInitializer() {
           Account Setup Required
         </CardTitle>
         <CardDescription>
-          Your account needs to be initialized in the database before you can create tournaments or join games.
+          Your account needs to be initialized in the database before you can join games.
         </CardDescription>
       </CardHeader>
       <CardContent>

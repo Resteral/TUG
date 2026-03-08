@@ -136,11 +136,6 @@ export function TournamentDashboard() {
             <TabsTrigger value="upcoming">Upcoming ({upcomingTournaments.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed ({completedTournaments.length})</TabsTrigger>
           </TabsList>
-
-          <Button onClick={() => router.push("/tournaments/create")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Tournament
-          </Button>
         </div>
 
         <TabsContent value="active" className="space-y-4">

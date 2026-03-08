@@ -134,7 +134,7 @@ export function GameQueue({ game }: GameQueueProps) {
                                 ) : (
                                     <PlayCircle className="h-4 w-4 mr-2" />
                                 )}
-                                {inQueue ? "Leave Queue" : "Join Queue"}
+                                {inQueue ? "Leave Queue" : "Join Queue ($5)"}
                             </Button>
                         )}
                         {allowedModes.map((mode) => (
@@ -151,7 +151,7 @@ export function GameQueue({ game }: GameQueueProps) {
                     <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
                         <Trophy className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No active lobbies</p>
-                        <p className="text-xs mt-1">Be the first to create one!</p>
+                        <p className="text-xs mt-1">Join the queue to start a new match!</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -184,8 +184,8 @@ export function GameQueue({ game }: GameQueueProps) {
                                     </div>
                                     <Button
                                         onClick={() => router.push(`/match/${match.id}`)}
-                                        variant="default" 
-                                        size="sm" 
+                                        variant="default"
+                                        size="sm"
                                         className="bg-green-600 hover:bg-green-700"
                                     >
                                         View Lobby
