@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TrendingUp } from "lucide-react"
 
-export function QueueRakeDisplay({ entryFee = 5 }: { entryFee?: number }) {
+export function QueueRakeDisplay() {
     const [rakePercentage, setRakePercentage] = useState<number>(0.10)
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
@@ -33,19 +32,25 @@ export function QueueRakeDisplay({ entryFee = 5 }: { entryFee?: number }) {
     }, [])
 
     if (loading) {
-        return <div className="text-xs text-muted-foreground animate-pulse mt-2">Loading platform fees...</div>
+        return <div className="h-12 w-full animate-pulse bg-muted/50 rounded-xl mb-6" />
     }
 
-    const platformCut = entryFee * rakePercentage
     const displayPercentage = (rakePercentage * 100).toFixed(0)
 
     return (
-        <Alert variant="default" className="mt-3 bg-muted/50 border-primary/20">
-            <AlertCircle className="h-4 w-4 text-primary" />
-            <AlertDescription className="text-xs flex justify-between items-center w-full">
-                <span>Platform Rake ({displayPercentage}%)</span>
-                <span className="font-semibold text-primary">-${platformCut.toFixed(2)}</span>
-            </AlertDescription>
-        </Alert>
+        <div className="bg-gradient-to-r from-green-500/10 via-primary/10 to-blue-500/10 border-2 border-primary/30 py-3 px-6 rounded-xl flex items-center justify-between shadow-md mb-6 backdrop-blur-sm animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/20 rounded-full">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                    <span className="block text-sm font-semibold text-muted-foreground uppercase tracking-wider">Current Platform Rake</span>
+                    <span className="block text-xs text-muted-foreground">The creator's cut from all match pools</span>
+                </div>
+            </div>
+            <div className="text-3xl font-black bg-gradient-to-r from-primary to-green-400 bg-clip-text text-transparent">
+                {displayPercentage}%
+            </div>
+        </div>
     )
 }

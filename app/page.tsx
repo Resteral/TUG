@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { GameQueue } from "@/components/match/game-queue"
+import { QueueRakeDisplay } from "@/components/match/queue-rake-display"
 import { getAllGames } from "@/lib/game-config"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -46,6 +47,8 @@ export default function LobbyPage() {
           {!user && <Button onClick={() => router.push("/auth")}>Login</Button>}
         </div>
       </header>
+
+      <QueueRakeDisplay />
 
       <Tabs defaultValue="all" className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
