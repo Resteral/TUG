@@ -209,19 +209,30 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
         .eq("team_id", winnerTeamId)
 
     if (winners && winners.length > 0) {
-        const totalPot = match.wager_amount * 2; // Simple 1v1 assumption or needs count.
-        // Actually, total pot = wager_amount * total_participants? 
-        // Or wager_amount * 2 (1v1). 
-        // Let's calculate total pot based on participants count to be safe for team modes.
-        const { count: totalParticipants } = await supabase.from("match_participants")
-            .select("*", { count: 'exact', head: true })
-            .eq("match_id", matchId)
+        // Get total pot from the tournament's prize pool if it exists
+        // Otherwise calculate it based on participants and wager
+        let totalPot = 0;
+        const { data: tournament } = await supabase.from("tournaments").select("prize_pool").eq("id", matchId).single()
 
-        // Payout per winner = (Total Pot / Winners Count) - Fee?
-        // Assuming equal wager from everyone.
-        // Total Pot = match.wager_amount * totalParticipants
-        const pot = match.wager_amount * (totalParticipants || 0)
-        const payoutPerWinner = pot / winners.length
+        if (tournament && tournament.prize_pool) {
+            totalPot = tournament.prize_pool;
+        } else {
+            // Fallback calculations for created lobbies
+            const { count: totalParticipants } = await supabase.from("match_participants")
+                .select("*", { count: 'exact', head: true })
+                .eq("match_id", matchId)
+
+            const grossPot = match.wager_amount * (totalParticipants || 0)
+            // Rake 10%
+            totalPot = grossPot * 0.90
+
+            // Optionally record the platform's cut here
+            const platformCut = grossPot * 0.10
+            // In a real application, you might insert this into a platform_revenue table
+            console.log(`[v0] Platform collected $${platformCut} rake from match ${matchId}`)
+        }
+
+        const payoutPerWinner = totalPot / winners.length
 
         // Distribute
         for (const winner of winners) {

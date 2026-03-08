@@ -189,6 +189,12 @@ export const lobbyQueueService = {
     // Take the required number of players
     const playersForMatch = queuedUsers.slice(0, requiredPlayers)
 
+    // Calculate prize pool with 10% rake
+    const ENTRY_FEE = 5.00
+    const RAKE_PERCENTAGE = 0.10
+    const grossPot = ENTRY_FEE * requiredPlayers
+    const netPrizePool = grossPot - (grossPot * RAKE_PERCENTAGE)
+
     // Create tournament
     const tournamentName = `${queueType === "maxed" ? "Ranked" : "Quick Play"} ${gameFormat.replace("_", " ")} - ${new Date().toLocaleTimeString()}`
 
@@ -200,6 +206,7 @@ export const lobbyQueueService = {
         game: "Omega Strikers",
         tournament_type: "draft",
         max_participants: requiredPlayers,
+        prize_pool: netPrizePool,
         player_pool_settings: {
           num_teams: playerCount,
           max_teams: playerCount,
