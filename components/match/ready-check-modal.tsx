@@ -161,7 +161,7 @@ export function ReadyCheckModal({ userId }: { userId: string }) {
                         Match Found!
                     </DialogTitle>
                     <DialogDescription>
-                        A match has been found. Are you ready to play?
+                        A strategic arena match has been staged. Are you prepared to compete?
                     </DialogDescription>
                 </DialogHeader>
 

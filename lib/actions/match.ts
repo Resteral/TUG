@@ -13,7 +13,7 @@ export async function createMatch(formData: FormData) {
     const game = formData.get("game")?.toString() || "zealot_hockey"
 
     if (wagerAmount <= 0) {
-        return { error: "Wager must be positive" }
+        return { error: "Entry fee must be positive" }
     }
 
     // Validate team size for the selected game
@@ -51,10 +51,10 @@ export async function createMatch(formData: FormData) {
     const { error: logError } = await supabase.from("transactions").insert({
         user_id: user.id,
         amount: -wagerAmount,
-        type: "wager_lock",
+        type: "entry_fee_payment",
         provider: "platform",
         status: "completed",
-        external_id: "match_creation_lock",
+        external_id: "match_creation_fee",
         // Ideally we'd link to match_id but we don't have it yet.
         // We could create match first then lock, but then we have a match without funds if lock fails.
         // Better: Create uuid in code or update transaction later. For now, this is acceptable.
@@ -130,10 +130,10 @@ export async function joinMatch(matchId: string, teamId: number) {
     await supabase.from("transactions").insert({
         user_id: user.id,
         amount: -match.wager_amount,
-        type: 'wager_lock',
+        type: 'entry_fee_payment',
         provider: 'platform',
         status: 'completed',
-        external_id: `match_join_${matchId}`
+        external_id: `match_join_fee_${matchId}`
     })
 
     // Join
@@ -247,7 +247,7 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
             await supabase.from("transactions").insert({
                 user_id: winner.user_id,
                 amount: payoutPerWinner,
-                type: 'wager_payout',
+                type: 'tournament_payout',
                 provider: 'platform',
                 status: 'completed',
                 external_id: `match_payout_${matchId}`

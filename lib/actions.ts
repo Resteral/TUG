@@ -60,6 +60,11 @@ export async function signUp(prevState: any, formData: FormData) {
     return { error: "Username and password are required" }
   }
 
+  const ageVerified = formData.get("ageVerified") === "on" || formData.get("ageVerified") === "true"
+  if (!ageVerified) {
+    return { error: "You must be at least 18 years old to join" }
+  }
+
   if (password.length < 6) {
     return { error: "Password must be at least 6 characters long" }
   }

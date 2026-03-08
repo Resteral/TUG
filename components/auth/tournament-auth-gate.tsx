@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, User, Mail, Lock } from "lucide-react"
+import { Loader2, User, Mail, Lock, ShieldCheck } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 
 interface TournamentAuthGateProps {
   children: React.ReactNode | ((user: any) => React.ReactNode)
@@ -24,6 +26,7 @@ export default function TournamentAuthGate({ children, requireAuth = true }: Tou
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [username, setUsername] = useState("")
+  const [ageVerified, setAgeVerified] = useState(false)
 
   const supabase = createClientComponentClient()
 
@@ -70,6 +73,10 @@ export default function TournamentAuthGate({ children, requireAuth = true }: Tou
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!ageVerified) {
+      setError("You must be at least 18 years old to join")
+      return
+    }
     setAuthLoading(true)
     setError(null)
 

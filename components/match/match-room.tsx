@@ -90,6 +90,16 @@ export function MatchRoom({ matchId }: { matchId: string }) {
                 <div className={`text-xl font-bold ${match.status === 'open' ? 'text-green-400' : 'text-yellow-400'}`}>
                     Status: {match.status.toUpperCase()}
                 </div>
+                <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span className="block text-sm text-gray-400 uppercase tracking-wider font-semibold">Total Prize Pool</span>
+                        <span className="text-3xl font-black text-white">${match.prize_pool || (match.wager_amount * match.team_size * 2 * 0.9).toFixed(2)}</span>
+                    </div>
+                    <div className="text-right">
+                        <span className="block text-sm text-gray-400 uppercase tracking-wider font-semibold">Tournament Format</span>
+                        <span className="text-lg font-bold text-primary">Skill-Based Arena</span>
+                    </div>
+                </div>
                 {match.status === 'completed' && (
                     <div className="text-2xl text-purple-400 mt-2">
                         Winner: Team {match.winner_team_id}
@@ -113,7 +123,7 @@ export function MatchRoom({ matchId }: { matchId: string }) {
                         ))}
                         {match.status === 'open' && team1.length < match.team_size && !userParticipant && (
                             <Button className="w-full bg-blue-700 hover:bg-blue-600" onClick={() => handleJoin(1)}>
-                                Join Team 1 (-${match.wager_amount})
+                                Join Team 1 (${match.wager_amount} Entry Fee)
                             </Button>
                         )}
                     </CardContent>
@@ -134,7 +144,7 @@ export function MatchRoom({ matchId }: { matchId: string }) {
                         ))}
                         {match.status === 'open' && team2.length < match.team_size && !userParticipant && (
                             <Button className="w-full bg-red-700 hover:bg-red-600" onClick={() => handleJoin(2)}>
-                                Join Team 2 (-${match.wager_amount})
+                                Join Team 2 (${match.wager_amount} Entry Fee)
                             </Button>
                         )}
                     </CardContent>

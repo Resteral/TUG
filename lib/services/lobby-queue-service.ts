@@ -37,7 +37,10 @@ export const lobbyQueueService = {
   ): Promise<QueueEntry> {
     console.log("[v0] User joining queue:", { userId, queueType, gameFormat, playerCount })
 
-    const ENTRY_FEE = 5.00
+    // Legal Compliance: Entry fee is split between platform fee and prize contribution
+    const PLATFORM_FEE = 1.00
+    const PRIZE_CONTRIBUTION = 4.00
+    const ENTRY_FEE = PLATFORM_FEE + PRIZE_CONTRIBUTION
 
     const { data: result, error } = await supabase.rpc('join_pay_to_play_queue', {
       p_user_id: userId,
@@ -65,7 +68,7 @@ export const lobbyQueueService = {
   async leaveQueue(userId: string): Promise<void> {
     console.log("[v0] User leaving queue:", userId)
 
-    const ENTRY_FEE = 5.00
+    const ENTRY_FEE = 5.00 // Total to refund
 
     const { data: result, error } = await supabase.rpc('leave_pay_to_play_queue', {
       p_user_id: userId,
@@ -211,7 +214,7 @@ export const lobbyQueueService = {
       .insert({
         name: tournamentName,
         description: `Auto-created from ${queueType} queue`,
-        game: "Omega Strikers",
+        game: "Strategic Arena", // Neutral branding for IP safety
         tournament_type: "draft",
         max_participants: requiredPlayers,
         prize_pool: netPrizePool,

@@ -4,7 +4,9 @@ import { useActionState } from "react"
 import { useFormStatus } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from "lucide-react"
+import { Loader2, ShieldCheck } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -93,10 +95,31 @@ export default function SignUpForm() {
               id="accountId"
               name="accountId"
               type="text"
-              placeholder="123456789 (can be added later)"
+              placeholder="Player-ID-123 (can be added later)"
               className="bg-[#1c1c1c] border-gray-800 text-white placeholder:text-gray-500 font-mono"
             />
             <p className="text-xs text-gray-500">Enter your account ID (4-15 numbers) or add it later in settings</p>
+          </div>
+
+          <div className="flex items-start space-x-3 bg-white/5 p-4 rounded-lg border border-white/10 group hover:border-white/20 transition-colors">
+            <Checkbox
+              id="ageVerified"
+              name="ageVerified"
+              required
+              className="mt-1 border-gray-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="ageVerified"
+                className="text-sm font-medium leading-none text-gray-200 cursor-pointer flex items-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                I am at least 18 years old
+              </Label>
+              <p className="text-xs text-gray-500">
+                By signing up, you agree to our Terms of Service and Anti-Cheat Policy.
+              </p>
+            </div>
           </div>
         </div>
 

@@ -35,7 +35,7 @@ export default function LobbyPage() {
     <div className="container mx-auto p-4 max-w-7xl">
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-          TUG Wagering
+          TUG Arena
         </h1>
         <div className="flex items-center gap-4">
           {user && (

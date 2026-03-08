@@ -134,7 +134,7 @@ export function GameQueue({ game }: GameQueueProps) {
                                 ) : (
                                     <PlayCircle className="h-4 w-4 mr-2" />
                                 )}
-                                {inQueue ? "Leave Queue" : "Join Queue ($5)"}
+                                {inQueue ? "Leave Arena" : "Join Arena ($5 Entry Fee)"}
                             </Button>
                         )}
                         {allowedModes.map((mode) => (
@@ -160,7 +160,7 @@ export function GameQueue({ game }: GameQueueProps) {
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-lg font-bold">${match.wager_amount}</span>
+                                            <span className="text-lg font-bold">${match.wager_amount} Entry</span>
                                             <Badge variant="outline" className="text-xs">
                                                 {match.team_size}v{match.team_size}
                                             </Badge>

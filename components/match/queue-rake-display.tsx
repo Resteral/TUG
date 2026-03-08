@@ -38,17 +38,17 @@ export function QueueRakeDisplay() {
     const displayPercentage = (rakePercentage * 100).toFixed(0)
 
     return (
-        <div className="bg-gradient-to-r from-green-500/10 via-primary/10 to-blue-500/10 border-2 border-primary/30 py-3 px-6 rounded-xl flex items-center justify-between shadow-md mb-6 backdrop-blur-sm animate-in fade-in slide-in-from-top-4">
+        <div className="bg-gradient-to-r from-blue-500/10 via-primary/10 to-indigo-500/10 border-2 border-primary/30 py-3 px-6 rounded-xl flex items-center justify-between shadow-md mb-6 backdrop-blur-sm animate-in fade-in slide-in-from-top-4">
             <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/20 rounded-full">
                     <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                    <span className="block text-sm font-semibold text-muted-foreground uppercase tracking-wider">Current Platform Rake</span>
-                    <span className="block text-xs text-muted-foreground">The creator's cut from all match pools</span>
+                    <span className="block text-sm font-semibold text-muted-foreground uppercase tracking-wider">Service Fee</span>
+                    <span className="block text-xs text-muted-foreground">Transparent platform fee per entry to support prize hosting</span>
                 </div>
             </div>
-            <div className="text-3xl font-black bg-gradient-to-r from-primary to-green-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-black bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
                 {displayPercentage}%
             </div>
         </div>
