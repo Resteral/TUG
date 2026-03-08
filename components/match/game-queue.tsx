@@ -11,6 +11,7 @@ import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle } from "lucide-react
 import { useRouter } from "next/navigation"
 import { readyCheckService } from "@/lib/services/ready-check-service"
 import { ReadyCheckModal } from "@/components/match/ready-check-modal"
+import { QueueRakeDisplay } from "@/components/match/queue-rake-display"
 import { useAuth } from "@/lib/auth-context"
 import { lobbyQueueService } from "@/lib/services/lobby-queue-service"
 import { toast } from "sonner"
@@ -146,7 +147,8 @@ export function GameQueue({ game }: GameQueueProps) {
                 </div>
                 <p className="text-sm text-muted-foreground">{game.description}</p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
+                <QueueRakeDisplay entryFee={5.00} />
                 {matches.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
                         <Trophy className="h-12 w-12 mx-auto mb-2 opacity-50" />

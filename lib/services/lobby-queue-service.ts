@@ -189,11 +189,19 @@ export const lobbyQueueService = {
     // Take the required number of players
     const playersForMatch = queuedUsers.slice(0, requiredPlayers)
 
-    // Calculate prize pool with 10% rake
+    // Calculate prize pool dynamically factoring in configured platform rake
     const ENTRY_FEE = 5.00
-    const RAKE_PERCENTAGE = 0.10
     const grossPot = ENTRY_FEE * requiredPlayers
-    const netPrizePool = grossPot - (grossPot * RAKE_PERCENTAGE)
+
+    // Fetch global rake setting
+    const { data: rakeSetting } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'rake_percentage')
+      .single();
+
+    const rakePercentage = rakeSetting?.value ? parseFloat(rakeSetting.value) : 0.10;
+    const netPrizePool = grossPot - (grossPot * rakePercentage);
 
     // Create tournament
     const tournamentName = `${queueType === "maxed" ? "Ranked" : "Quick Play"} ${gameFormat.replace("_", " ")} - ${new Date().toLocaleTimeString()}`

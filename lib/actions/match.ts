@@ -223,13 +223,16 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
                 .eq("match_id", matchId)
 
             const grossPot = match.wager_amount * (totalParticipants || 0)
-            // Rake 10%
-            totalPot = grossPot * 0.90
 
-            // Optionally record the platform's cut here
-            const platformCut = grossPot * 0.10
-            // In a real application, you might insert this into a platform_revenue table
-            console.log(`[v0] Platform collected $${platformCut} rake from match ${matchId}`)
+            // Fetch global rake setting
+            const { data: rakeSetting } = await supabase
+                .from('platform_settings')
+                .select('value')
+                .eq('key', 'rake_percentage')
+                .single();
+
+            const rakePercentage = rakeSetting?.value ? parseFloat(rakeSetting.value) : 0.10;
+            totalPot = grossPot - (grossPot * rakePercentage);
         }
 
         const payoutPerWinner = totalPot / winners.length
