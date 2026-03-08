@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { joinMatch, reportResult } from "@/lib/actions/match"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Gamepad2, ExternalLink, Copy } from "lucide-react"
+import { SteamIcon } from "@/components/icons/steam-icon"
 
 export function MatchRoom({ matchId }: { matchId: string }) {
     const [match, setMatch] = useState<any>(null)
@@ -30,7 +32,7 @@ export function MatchRoom({ matchId }: { matchId: string }) {
 
             if (matchData) {
                 const { data: parts } = await supabase.from("match_participants")
-                    .select("*, profile:users(username)")
+                    .select("*, profile:users(username, steam_id, epic_games_id)")
                     .eq("match_id", matchId)
                 setParticipants(parts || [])
             }
@@ -44,7 +46,7 @@ export function MatchRoom({ matchId }: { matchId: string }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'match_participants', filter: `match_id=eq.${matchId}` }, async () => {
                 // Reload participants
                 const { data: parts } = await supabase.from("match_participants")
-                    .select("*, profile:users(username)")
+                    .select("*, profile:users(username, steam_id, epic_games_id)")
                     .eq("match_id", matchId)
                 setParticipants(parts || [])
             })
@@ -116,9 +118,40 @@ export function MatchRoom({ matchId }: { matchId: string }) {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {team1.map(p => (
-                            <div key={p.user_id} className="p-2 bg-blue-900/40 rounded flex items-center justify-between">
-                                <span>{p.profile?.username || 'User'}</span>
-                                {p.user_id === currentUser?.id && <span className="text-xs bg-blue-600 px-2 rounded">YOU</span>}
+                            <div key={p.user_id} className="p-3 bg-blue-900/40 rounded-lg flex items-center justify-between border border-blue-800/20">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold">{p.profile?.username || 'User'}</span>
+                                        {p.user_id === currentUser?.id && <span className="text-[10px] bg-blue-600 px-2 py-0.5 rounded uppercase font-bold">YOU</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {p.profile?.steam_id && (
+                                            <a
+                                                href={p.profile.steam_id.startsWith('http') ? p.profile.steam_id : `https://steamcommunity.com/profiles/${p.profile.steam_id}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                title="View Steam Profile"
+                                            >
+                                                <SteamIcon className="w-3.5 h-3.5" />
+                                            </a>
+                                        )}
+                                        {p.profile?.epic_games_id && (
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(p.profile.epic_games_id);
+                                                    toast.success("Epic ID copied!");
+                                                }}
+                                                className="text-white hover:text-gray-200 transition-colors flex items-center gap-1"
+                                                title="Copy Epic ID"
+                                            >
+                                                <span className="w-3.5 h-3.5 bg-white rounded-[2px] flex items-center justify-center">
+                                                    <span className="text-black text-[9px] font-bold">E</span>
+                                                </span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ))}
                         {match.status === 'open' && team1.length < match.team_size && !userParticipant && (
@@ -137,9 +170,40 @@ export function MatchRoom({ matchId }: { matchId: string }) {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {team2.map(p => (
-                            <div key={p.user_id} className="p-2 bg-red-900/40 rounded flex items-center justify-between">
-                                <span>{p.profile?.username || 'User'}</span>
-                                {p.user_id === currentUser?.id && <span className="text-xs bg-red-600 px-2 rounded">YOU</span>}
+                            <div key={p.user_id} className="p-3 bg-red-900/40 rounded-lg flex items-center justify-between border border-red-800/20">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold">{p.profile?.username || 'User'}</span>
+                                        {p.user_id === currentUser?.id && <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded uppercase font-bold">YOU</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {p.profile?.steam_id && (
+                                            <a
+                                                href={p.profile.steam_id.startsWith('http') ? p.profile.steam_id : `https://steamcommunity.com/profiles/${p.profile.steam_id}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                title="View Steam Profile"
+                                            >
+                                                <SteamIcon className="w-3.5 h-3.5" />
+                                            </a>
+                                        )}
+                                        {p.profile?.epic_games_id && (
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(p.profile.epic_games_id);
+                                                    toast.success("Epic ID copied!");
+                                                }}
+                                                className="text-white hover:text-gray-200 transition-colors"
+                                                title="Copy Epic ID"
+                                            >
+                                                <span className="w-3.5 h-3.5 bg-white rounded-[2px] flex items-center justify-center">
+                                                    <span className="text-black text-[9px] font-bold">E</span>
+                                                </span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ))}
                         {match.status === 'open' && team2.length < match.team_size && !userParticipant && (
