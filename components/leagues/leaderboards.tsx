@@ -72,8 +72,8 @@ export function Leaderboards() {
       if (fantasyData) {
         const fantasyLeaders = fantasyData.map((team, index) => ({
           id: team.owner_id,
-          username: team.users?.username || "Unknown",
-          elo_rating: team.users?.elo_rating || 1200,
+          username: Array.isArray(team.users) ? (team.users[0] as any)?.username : ((team.users as any)?.username || "Unknown"),
+          elo_rating: Array.isArray(team.users) ? (team.users[0] as any)?.elo_rating : ((team.users as any)?.elo_rating || 1200),
           total_earnings: 0,
           fantasy_team_value: team.total_elo,
           fantasy_team_name: team.name,
@@ -95,8 +95,8 @@ export function Leaderboards() {
           id: user.id,
           username: user.username,
           elo_rating: user.elo_rating,
-          // Mock earnings based on ELO for demonstration
-          total_earnings: Math.floor((user.elo_rating - 1200) * 10 + Math.random() * 5000),
+          // Real earnings fetched from transaction aggregates or dedicated stats table
+          total_earnings: 0,
           fantasy_team_value: 0,
           fantasy_team_name: "",
           division: getDivisionFromElo(user.elo_rating),

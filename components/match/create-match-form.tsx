@@ -68,7 +68,7 @@ export function CreateMatchForm() {
 
                     <div className="space-y-2">
                         <Label>Entry Fee ($)</Label>
-                        <Input name="wagerAmount" type="number" min="1" step="0.50" required placeholder="10.00" />
+                        <Input name="entryFee" type="number" min="1" step="0.50" required placeholder="10.00" />
                     </div>
 
                     <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">

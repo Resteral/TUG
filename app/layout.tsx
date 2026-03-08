@@ -43,6 +43,7 @@ html {
                   </div>
                   <div className="flex gap-8 text-sm text-gray-400">
                     <a href="/guide" className="hover:text-white transition-colors">How It Works</a>
+                    <a href="/support" className="hover:text-white transition-colors">Support & FAQ</a>
                     <a href="https://discord.gg/TBV2XxmUkc" target="_blank" rel="noopener noreferrer" className="hover:text-[#5865F2] transition-colors">Discord Community</a>
                     <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
                     <a href="/rules" className="hover:text-white transition-colors">Competition Rules</a>

@@ -37,40 +37,6 @@ export default function WalletPage() {
         load()
     }, [router])
 
-    const handleMockDeposit = async () => {
-        // Mock deposit logic
-        // Ideally call a server action, but for mock we can just use RPC if we authorized it for self,
-        // or a server action `deposit(amount)`.
-        // Let's assume we need a server action for safety actually.
-        // But for this step, I'll essentially just "refresh" or show a helper message.
-        // Actually, let's make it work! I'll create an ad-hoc action or just RPC call if enabled.
-        // I enabled increment_balance for self in the migration!
-
-        const amount = 100
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { error } = await supabase.rpc('increment_balance', {
-            user_id: user.id,
-            amount: amount
-        })
-
-        if (!error) {
-            // We also should log the transaction!
-            await supabase.from("transactions").insert({
-                user_id: user.id,
-                amount: amount,
-                type: 'deposit',
-                provider: 'platform', // Mock
-                status: 'completed',
-                external_id: 'mock_deposit_' + Date.now()
-            })
-            alert("Mock Deposit Successful! +$100")
-            window.location.reload()
-        } else {
-            alert("Deposit failed")
-        }
-    }
 
     if (loading) return <div className="p-8">Loading wallet...</div>
 
@@ -88,11 +54,8 @@ export default function WalletPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-4xl font-mono text-green-400 mb-4">${balance.toFixed(2)}</div>
-                        <Button onClick={handleMockDeposit} className="w-full bg-green-600 hover:bg-green-700">
-                            [MOCK] Deposit $100
-                        </Button>
                         <p className="text-xs text-gray-500 mt-2">
-                            *This is a mock deposit for testing purposes. Real payments (Stripe/Crypto) to be implemented.
+                            Secure your funds for Arena entry fees.
                         </p>
                     </CardContent>
                 </Card>

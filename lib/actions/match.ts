@@ -8,11 +8,11 @@ import { isModeAllowedForGame } from "@/lib/game-config"
 export async function createMatch(formData: FormData) {
     const supabase = await createClient()
 
-    const wagerAmount = parseFloat(formData.get("wagerAmount")?.toString() || "0")
+    const entryFee = parseFloat(formData.get("entryFee")?.toString() || "0")
     const teamSize = parseInt(formData.get("teamSize")?.toString() || "1")
     const game = formData.get("game")?.toString() || "zealot_hockey"
 
-    if (wagerAmount <= 0) {
+    if (entryFee <= 0) {
         return { error: "Entry fee must be positive" }
     }
 
@@ -33,36 +33,29 @@ export async function createMatch(formData: FormData) {
     // Check balance (optimistic check)
     const { data: profile } = await supabase.from("users").select("balance").eq("id", user.id).single()
 
-    if (!profile || profile.balance < wagerAmount) {
+    if (!profile || profile.balance < entryFee) {
         return { error: "Insufficient funds" }
     }
 
     // Atomic Deduct (Lock funds)
     const { error: txError } = await supabase.rpc("increment_balance", {
         user_id: user.id,
-        amount: -wagerAmount,
+        amount: -entryFee,
     })
 
-    // If RPC fails (likely due to constraint check balance >= 0 if implemented, or other DB err)
-    // The constraint check `check (balance >= 0)` in schema ensures this fails if insufficient funds
     if (txError) return { error: "Transaction failed: Insufficient funds" }
 
     // Log Transaction
     const { error: logError } = await supabase.from("transactions").insert({
         user_id: user.id,
-        amount: -wagerAmount,
+        amount: -entryFee,
         type: "entry_fee_payment",
         provider: "platform",
         status: "completed",
         external_id: "match_creation_fee",
-        // Ideally we'd link to match_id but we don't have it yet.
-        // We could create match first then lock, but then we have a match without funds if lock fails.
-        // Better: Create uuid in code or update transaction later. For now, this is acceptable.
     })
 
     if (logError) {
-        // Critical error: successfully deducted but failed to log.
-        // In real prod, this needs alert.
         console.error("Failed to log transaction", logError)
     }
 
@@ -71,7 +64,7 @@ export async function createMatch(formData: FormData) {
         .from("matches")
         .insert({
             creator_id: user.id,
-            wager_amount: wagerAmount,
+            entry_fee: entryFee,
             team_size: teamSize,
             game: game,
             status: "open",
@@ -81,11 +74,11 @@ export async function createMatch(formData: FormData) {
 
     if (matchError) {
         // Refund on failure
-        await supabase.rpc("increment_balance", { user_id: user.id, amount: wagerAmount })
+        await supabase.rpc("increment_balance", { user_id: user.id, amount: entryFee })
         // Log Refund
         await supabase.from("transactions").insert({
             user_id: user.id,
-            amount: wagerAmount,
+            amount: entryFee,
             type: "refund",
             provider: "platform",
             status: "completed",
@@ -117,19 +110,19 @@ export async function joinMatch(matchId: string, teamId: number) {
 
     // Check balance
     const { data: profile } = await supabase.from("users").select("balance").eq("id", user.id).single()
-    if (!profile || profile.balance < match.wager_amount) return { error: "Insufficient funds" }
+    if (!profile || profile.balance < match.entry_fee) return { error: "Insufficient funds" }
 
     // Atomic Deduct
     const { error: txError } = await supabase.rpc('increment_balance', {
         user_id: user.id,
-        amount: -match.wager_amount
+        amount: -match.entry_fee
     })
     if (txError) return { error: "Transaction failed: Insufficient funds" }
 
     // Log Transaction
     await supabase.from("transactions").insert({
         user_id: user.id,
-        amount: -match.wager_amount,
+        amount: -match.entry_fee,
         type: 'entry_fee_payment',
         provider: 'platform',
         status: 'completed',
@@ -146,10 +139,10 @@ export async function joinMatch(matchId: string, teamId: number) {
 
     if (joinError) {
         // Refund
-        await supabase.rpc('increment_balance', { user_id: user.id, amount: match.wager_amount })
+        await supabase.rpc('increment_balance', { user_id: user.id, amount: match.entry_fee })
         await supabase.from("transactions").insert({
             user_id: user.id,
-            amount: match.wager_amount,
+            amount: match.entry_fee,
             type: 'refund',
             provider: 'platform',
             status: 'completed',
@@ -184,15 +177,6 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
 
     if (!participant) return { error: "You are not a participant" }
 
-    // 2. Update Match Status and Result
-    // In a real app, this might need a "confirmation" step from the loser.
-    // For MVP, we trust the reporter (or assume "Self-Report + Verify" is next step).
-    // The plan says "Winner reports, Loser confirms". 
-    // This action implements the REPORT step. If we want immediate payout for MVP:
-
-    // Let's implement immediate payout for MVP ease as per "Manual Verification" plan implies testing full flow.
-    // But safely, let's just mark it as completed for now.
-
     const { error: updateError } = await supabase.from("matches").update({
         status: "completed",
         winner_team_id: winnerTeamId,
@@ -209,20 +193,17 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
         .eq("team_id", winnerTeamId)
 
     if (winners && winners.length > 0) {
-        // Get total pot from the tournament's prize pool if it exists
-        // Otherwise calculate it based on participants and wager
         let totalPot = 0;
         const { data: tournament } = await supabase.from("tournaments").select("prize_pool").eq("id", matchId).single()
 
         if (tournament && tournament.prize_pool) {
             totalPot = tournament.prize_pool;
         } else {
-            // Fallback calculations for created lobbies
             const { count: totalParticipants } = await supabase.from("match_participants")
                 .select("*", { count: 'exact', head: true })
                 .eq("match_id", matchId)
 
-            const grossPot = match.wager_amount * (totalParticipants || 0)
+            const grossPot = match.entry_fee * (totalParticipants || 0)
 
             // Fetch global rake setting
             const { data: rakeSetting } = await supabase

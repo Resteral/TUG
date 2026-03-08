@@ -52,11 +52,28 @@ export default function RulesPage() {
 
             <Card className="bg-background/50 border-2">
                 <CardHeader>
-                    <CardTitle>Consensus Reporting</CardTitle>
+                    <CardTitle>Consensus Reporting & Disputes</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-gray-300">
                     <p>
-                        To ensure integrity, all participants must report the match outcome. False reporting is a violation of our terms. If a dispute occurs, a platform moderator will review submitted evidence (screenshots/replays) to determine the outcome.
+                        To ensure integrity, all participants must report the match outcome. False reporting is a violation of our terms.
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2">
+                        <li><strong>Standard Reporting:</strong> Winners must report within 30 minutes of match completion.</li>
+                        <li><strong>Conflict Resolution:</strong> If reports conflict, the match is moved to "Disputed" status.</li>
+                        <li><strong>Evidence Submission:</strong> In case of a dispute, players must provide valid proof (video replays or full-room screenshots) via the support center or Discord within 24 hours.</li>
+                        <li><strong>Admin Ruling:</strong> Platform administrators have final authority on all match outcomes based on provided evidence.</li>
+                    </ul>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-background/50 border-2">
+                <CardHeader>
+                    <CardTitle>Match Abandonment</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-gray-300">
+                    <p>
+                        Leaving a match in progress or failing to join the game server within the allotted time will result in a technical forfeit. Repeated abandonment will lead to account restrictions.
                     </p>
                 </CardContent>
             </Card>

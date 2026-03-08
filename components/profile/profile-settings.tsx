@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { updateProfileLinks } from "@/lib/actions/profile"
+import { updateProfile } from "@/lib/actions/profile"
 import { Gamepad2 } from "lucide-react"
 import { SteamIcon } from "@/components/icons/steam-icon"
 
 export function ProfileSettings() {
     const [loading, setLoading] = useState(false)
+    const [username, setUsername] = useState("")
+    const [avatarUrl, setAvatarUrl] = useState("")
     const [steamId, setSteamId] = useState("")
     const [epicId, setEpicId] = useState("")
     const supabase = createClient()
@@ -24,11 +26,13 @@ export function ProfileSettings() {
 
             const { data: profile } = await supabase
                 .from("users")
-                .select("steam_id, epic_games_id")
+                .select("username, avatar_url, steam_id, epic_games_id")
                 .eq("id", user.id)
                 .single()
 
             if (profile) {
+                setUsername(profile.username || "")
+                setAvatarUrl(profile.avatar_url || "")
                 setSteamId(profile.steam_id || "")
                 setEpicId(profile.epic_games_id || "")
             }
@@ -40,7 +44,9 @@ export function ProfileSettings() {
         e.preventDefault()
         setLoading(true)
 
-        const result = await updateProfileLinks({
+        const result = await updateProfile({
+            username,
+            avatar_url: avatarUrl,
             steam_id: steamId,
             epic_games_id: epicId
         })
@@ -58,14 +64,37 @@ export function ProfileSettings() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Gamepad2 className="w-5 h-5 text-primary" />
-                    Social Profile Linking
+                    Profile & Social Links
                 </CardTitle>
                 <CardDescription>
-                    Link your game platform accounts so opponents can add you easily.
+                    Customize your appearance and link game platform accounts.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="username">Username</Label>
+                            <Input
+                                id="username"
+                                placeholder="Resteral"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="bg-primary/5 border-primary/10"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="avatar">Avatar URL</Label>
+                            <Input
+                                id="avatar"
+                                placeholder="https://example.com/avatar.png"
+                                value={avatarUrl}
+                                onChange={(e) => setAvatarUrl(e.target.value)}
+                                className="bg-primary/5 border-primary/10"
+                            />
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                             <SteamIcon className="w-4 h-4 text-[#171a21]" />
@@ -105,7 +134,7 @@ export function ProfileSettings() {
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
                         disabled={loading}
                     >
-                        {loading ? "Saving..." : "Save Social Links"}
+                        {loading ? "Saving..." : "Save Profile Changes"}
                     </Button>
                 </form>
             </CardContent>
