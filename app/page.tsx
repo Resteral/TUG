@@ -44,7 +44,7 @@ export default function LobbyPage() {
               <div className="text-xl font-mono text-green-400">${balance.toFixed(2)}</div>
             </div>
           )}
-          {!user && <Button onClick={() => router.push("/auth")}>Login</Button>}
+          {!user && <Button onClick={() => router.push("/auth/login")}>Login</Button>}
         </div>
       </header>
 

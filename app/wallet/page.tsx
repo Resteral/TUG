@@ -108,11 +108,18 @@ export default function WalletPage() {
                             {transactions.map(tx => (
                                 <div key={tx.id} className="flex justify-between items-center p-2 bg-gray-900/40 rounded border border-gray-800">
                                     <div>
-                                        <div className="text-sm font-semibold capitalize">{tx.type.replace('_', ' ')}</div>
+                                        <div className="text-sm font-semibold">
+                                            {tx.type === 'arena_entry' ? 'Arena Entry fee' :
+                                                tx.type === 'arena_prize' ? 'Arena Prize Payout' :
+                                                    tx.type === 'deposit' ? 'Wallet Deposit' :
+                                                        tx.type === 'refund' ? 'Arena Refund' :
+                                                            tx.type.replace('_', ' ')}
+                                        </div>
                                         <div className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleString()}</div>
+                                        {tx.description && <div className="text-xs text-gray-500 italic mt-1">{tx.description}</div>}
                                     </div>
-                                    <div className={`font-mono ${tx.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {tx.amount > 0 ? '+' : ''}{tx.amount}
+                                    <div className={`font-mono text-lg ${tx.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
                                     </div>
                                 </div>
                             ))}

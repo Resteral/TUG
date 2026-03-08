@@ -70,19 +70,23 @@ export function GameQueue({ game }: GameQueueProps) {
         checkQueue()
     }, [user])
 
-    const handleQueueAction = async () => {
+    const [currentEntryFee, setCurrentEntryFee] = useState<number>(5)
+
+    const handleQueueAction = async (entryFee?: number) => {
         if (!user) return
         setQueueLoading(true)
         try {
             if (inQueue) {
-                await lobbyQueueService.leaveQueue(user.id)
+                await lobbyQueueService.leaveQueue(user.id, currentEntryFee)
                 setInQueue(false)
                 toast.info("Left queue")
             } else {
+                const fee = entryFee || 5
+                setCurrentEntryFee(fee)
                 // Default to 4v4 Snake Draft for now as per requirements
-                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4)
+                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4, fee)
                 setInQueue(true)
-                toast.success("Joined queue for Snake Draft!")
+                toast.success(`Joined ${fee === 5 ? 'Standard' : 'Premier'} Arena ($${fee})!`)
             }
         } catch (error) {
             console.error(error)
@@ -120,22 +124,71 @@ export function GameQueue({ game }: GameQueueProps) {
                     </CardTitle>
                     <div className="flex gap-2 items-center">
                         {user && (
-                            <Button
-                                onClick={handleQueueAction}
-                                disabled={queueLoading}
-                                variant={inQueue ? "destructive" : "default"}
-                                size="sm"
-                                className={inQueue ? "" : "bg-green-600 hover:bg-green-700"}
-                            >
-                                {queueLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : inQueue ? (
-                                    <XCircle className="h-4 w-4 mr-2" />
+                            <div className="flex gap-2">
+                                {!inQueue ? (
+                                    <>
+                                        <Button
+                                            onClick={() => handleQueueAction(5)}
+                                            disabled={queueLoading}
+                                            variant="default"
+                                            size="sm"
+                                            className="bg-green-600 hover:bg-green-700 font-bold"
+                                        >
+                                            $5
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleQueueAction(10)}
+                                            disabled={queueLoading}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                                        >
+                                            $10
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleQueueAction(25)}
+                                            disabled={queueLoading}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                        >
+                                            $25
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleQueueAction(50)}
+                                            disabled={queueLoading}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                                        >
+                                            $50
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleQueueAction(100)}
+                                            disabled={queueLoading}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                                        >
+                                            $100
+                                        </Button>
+                                    </>
                                 ) : (
-                                    <PlayCircle className="h-4 w-4 mr-2" />
+                                    <Button
+                                        onClick={() => handleQueueAction()}
+                                        disabled={queueLoading}
+                                        variant="destructive"
+                                        size="sm"
+                                    >
+                                        {queueLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                            <XCircle className="h-4 w-4 mr-2" />
+                                        )}
+                                        Leave Arena
+                                    </Button>
                                 )}
-                                {inQueue ? "Leave Arena" : "Join Arena ($5 Entry Fee)"}
-                            </Button>
+                            </div>
                         )}
                         {allowedModes.map((mode) => (
                             <Badge key={mode.id} variant="secondary" className={mode.color}>
@@ -160,7 +213,7 @@ export function GameQueue({ game }: GameQueueProps) {
                                 <CardContent className="p-4 flex items-center justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-lg font-bold">${match.wager_amount} Entry</span>
+                                            <span className="text-lg font-bold">${match.entry_fee} Entry</span>
                                             <Badge variant="outline" className="text-xs">
                                                 {match.team_size}v{match.team_size}
                                             </Badge>

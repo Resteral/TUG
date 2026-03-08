@@ -71,6 +71,10 @@ export const GAME_MODES: Record<string, GameMode> = {
     matchType: '4v4_draft',
   },
   '5v5': {
+    id: '5v5',
+    name: '5v5',
+    teamSize: 5,
+    players: 10,
     description: 'Full strategic engagement',
     duration: '35-40 min',
     prizePool: '$10 Platform Prize',

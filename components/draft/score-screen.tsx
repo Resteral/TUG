@@ -15,6 +15,7 @@ export function ScoreScreen({ tournamentId }: { tournamentId: string }) {
     const [submitting, setSubmitting] = useState(false)
     const [participants, setParticipants] = useState<any[]>([])
     const [currentUser, setCurrentUser] = useState<any>(null)
+    const [result, setResult] = useState<{ elo1: number, elo2: number } | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -61,6 +62,7 @@ export function ScoreScreen({ tournamentId }: { tournamentId: string }) {
             if (res.error) {
                 toast.error(res.error)
             } else if (res.consensus) {
+                setResult({ elo1: res.elo_change_team1, elo2: res.elo_change_team2 })
                 toast.success("Consensus reached! Match completed and prizes distributed.")
             } else {
                 toast.success("Score submitted! Awaiting other players.")
@@ -121,11 +123,31 @@ export function ScoreScreen({ tournamentId }: { tournamentId: string }) {
 
                     <Button
                         onClick={submitScore}
-                        disabled={submitting || !team1Score || !team2Score}
+                        disabled={submitting || !team1Score || !team2Score || !!result}
                         className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 transition-all"
                     >
-                        {submitting ? "Submitting..." : "Report Score"}
+                        {submitting ? "Submitting..." : result ? "Results Finalized" : "Report Score"}
                     </Button>
+
+                    {result && (
+                        <div className="mt-4 p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                            <h3 className="text-center font-bold text-lg text-primary">ELO Adjustments</h3>
+                            <div className="flex justify-around text-center">
+                                <div>
+                                    <div className="text-zinc-400 text-xs">Team 1</div>
+                                    <div className={`text-xl font-mono ${result.elo1 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {result.elo1 >= 0 ? '+' : ''}{result.elo1}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-zinc-400 text-xs">Team 2</div>
+                                    <div className={`text-xl font-mono ${result.elo2 >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {result.elo2 >= 0 ? '+' : ''}{result.elo2}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

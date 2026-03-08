@@ -18,5 +18,10 @@ export async function submitTournamentScore(tournamentId: string, team1Score: nu
     }
 
     revalidatePath(`/draft/score/${tournamentId}`)
-    return { success: true, consensus: data.consensus }
+    return {
+        success: true,
+        consensus: data.consensus,
+        elo_change_team1: data.elo_change_team1,
+        elo_change_team2: data.elo_change_team2
+    }
 }

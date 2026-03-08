@@ -34,13 +34,17 @@ export const lobbyQueueService = {
     queueType: "maxed" | "unmaxed",
     gameFormat: "snake_draft" | "auction_draft" | "linear_draft",
     playerCount: number,
+    entryFee: number = 5.00, // Default to $5
   ): Promise<QueueEntry> {
-    console.log("[v0] User joining queue:", { userId, queueType, gameFormat, playerCount })
+    console.log("[v0] User joining queue:", { userId, queueType, gameFormat, playerCount, entryFee })
 
-    // Legal Compliance: Entry fee is split between platform fee and prize contribution
-    const PLATFORM_FEE = 1.00
-    const PRIZE_CONTRIBUTION = 4.00
-    const ENTRY_FEE = PLATFORM_FEE + PRIZE_CONTRIBUTION
+    // Legal Compliance Check: Ensure entry fee is supported
+    const allowedFees = [5.00, 10.00, 25.00, 50.00, 100.00]
+    if (!allowedFees.includes(entryFee)) {
+      throw new Error("Invalid tier entry fee")
+    }
+
+    const ENTRY_FEE = entryFee
 
     const { data: result, error } = await supabase.rpc('join_pay_to_play_queue', {
       p_user_id: userId,
@@ -65,10 +69,10 @@ export const lobbyQueueService = {
     return result.queue_entry as QueueEntry
   },
 
-  async leaveQueue(userId: string): Promise<void> {
+  async leaveQueue(userId: string, entryFee: number = 5.00): Promise<void> {
     console.log("[v0] User leaving queue:", userId)
 
-    const ENTRY_FEE = 5.00 // Total to refund
+    const ENTRY_FEE = entryFee // Use correct fee for refund
 
     const { data: result, error } = await supabase.rpc('leave_pay_to_play_queue', {
       p_user_id: userId,
@@ -146,8 +150,9 @@ export const lobbyQueueService = {
     queueType: "maxed" | "unmaxed",
     gameFormat: string,
     playerCount: number,
+    entryFee: number = 5.00,
   ): Promise<string | null> {
-    console.log("[v0] Checking if we can create match:", { queueType, gameFormat, playerCount })
+    console.log("[v0] Checking if we can create match:", { queueType, gameFormat, playerCount, entryFee })
 
     const { data: queuedUsers } = await supabase
       .from("lobby_queue")
@@ -160,6 +165,7 @@ export const lobbyQueueService = {
       .eq("queue_type", queueType)
       .eq("game_format", gameFormat)
       .eq("player_count", playerCount)
+      .eq("entry_fee", entryFee)
       .eq("status", "waiting")
       .order("joined_at", { ascending: true })
 
@@ -193,7 +199,7 @@ export const lobbyQueueService = {
     const playersForMatch = queuedUsers.slice(0, requiredPlayers)
 
     // Calculate prize pool dynamically factoring in configured platform rake
-    const ENTRY_FEE = 5.00
+    const ENTRY_FEE = entryFee
     const grossPot = ENTRY_FEE * requiredPlayers
 
     // Fetch global rake setting
@@ -273,9 +279,12 @@ export const lobbyQueueService = {
           { type: "unmaxed" as const, format: "snake_draft", count: 4 },
           { type: "unmaxed" as const, format: "auction_draft", count: 4 },
         ]
+        const entryFees = [5, 10, 25, 50, 100]
 
         for (const config of queueConfigs) {
-          await this.checkAndCreateMatch(config.type, config.format, config.count)
+          for (const fee of entryFees) {
+            await this.checkAndCreateMatch(config.type, config.format, config.count, fee)
+          }
         }
       } catch (error) {
         console.error("[v0] Error in queue monitoring:", error)

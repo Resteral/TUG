@@ -18,7 +18,7 @@ export function CreateMatchForm() {
         <Card>
             <CardHeader>
                 <CardTitle>Create Match</CardTitle>
-                <CardDescription>Start a new wager</CardDescription>
+                <CardDescription>Start a new arena competition</CardDescription>
             </CardHeader>
             <CardContent>
                 <form
@@ -67,12 +67,12 @@ export function CreateMatchForm() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Wager Amount ($)</Label>
+                        <Label>Entry Fee ($)</Label>
                         <Input name="wagerAmount" type="number" min="1" step="0.50" required placeholder="10.00" />
                     </div>
 
                     <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-                        Create Challenge
+                        Create Arena Challenge
                     </Button>
                 </form>
             </CardContent>

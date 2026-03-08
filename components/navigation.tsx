@@ -28,12 +28,15 @@ import {
   DollarSign,
   TrendingUp,
   Gamepad2,
+  HelpCircle,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
 
 const navigation = [
   { name: "Lobby", href: "/", icon: Home },
+  { name: "How It Works", href: "/guide", icon: HelpCircle },
+  { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Wallet", href: "/wallet", icon: DollarSign },
   // { name: "My Matches", href: "/matches", icon: Gamepad2 }, // Implement later
 ]
