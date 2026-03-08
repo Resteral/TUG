@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Gamepad2,
   HelpCircle,
+  MessageSquare,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import Image from "next/image"
@@ -38,6 +39,7 @@ const navigation = [
   { name: "How It Works", href: "/guide", icon: HelpCircle },
   { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
   { name: "Wallet", href: "/wallet", icon: DollarSign },
+  { name: "Discord", href: "https://discord.gg/TBV2XxmUkc", icon: MessageSquare, external: true },
   // { name: "My Matches", href: "/matches", icon: Gamepad2 }, // Implement later
 ]
 
@@ -119,7 +121,7 @@ export function Navigation() {
             {navigation.map((item) => {
               const Icon = item.icon
               return (
-                <Link key={item.name} href={item.href}>
+                <Link key={item.name} href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined}>
                   <Button
                     variant={isActive(item.href) ? "secondary" : "ghost"}
                     size="sm"
