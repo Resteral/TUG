@@ -6,15 +6,15 @@
 - [/] Backend Development
     - [x] Configure Supabase Client & Environment Variables <!-- id: 3 -->
     - [x] Create Database Tables (`users`, `matches`, `wagers`, `transactions`) <!-- id: 4 -->
-    - [/] Implement Server Actions for Matchmaking (Create/Join/Leave) <!-- id: 5 -->
+    - [x] Implement Server Actions for Matchmaking (Create/Join/Leave) <!-- id: 5 -->
     - [x] Implement Wagering Logic (Escrow/Payout) <!-- id: 18 -->
     - [x] Fix RLS Policies for Transactions (Missing Insert) <!-- id: 23 -->
     - [ ] Implement Stripe Checkout API <!-- id: 21 -->
     - [ ] Implement Crypto Deposit Logic (Mock/Simple) <!-- id: 22 -->
 - [ ] Frontend Development
-    - [ ] Create `MatchLobby` Component (List available matches) <!-- id: 6 -->
-    - [ ] Create `MatchRoom` Component (1v1-6v6 slots, Ready check) <!-- id: 7 -->
+    - [x] Create `MatchLobby` Component (List available matches) <!-- id: 6 -->
+    - [x] Create `MatchRoom` Component (1v1-6v6 slots, Ready check) <!-- id: 7 -->
     - [ ] Update Navigation & Layout for Wagering Context <!-- id: 19 -->
-    - [ ] Create Wallet/Profile Page (Stripe/Crypto UI) <!-- id: 20 -->
+    - [/] Create Wallet/Profile Page (Stripe/Crypto UI) <!-- id: 20 -->
 - [ ] Verification
     - [ ] Verify game flow (Create -> Join -> Start -> Result) <!-- id: 8 -->

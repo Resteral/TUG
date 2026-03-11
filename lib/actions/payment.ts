@@ -44,3 +44,50 @@ export async function createDepositSession(amount: number) {
         return { error: "Failed to create payment session" };
     }
 }
+
+export async function createDepositIntent(amount: number, method: 'stripe' | 'crypto') {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Not authenticated" }
+
+    try {
+        if (method === 'crypto') {
+            // Mock transaction for crypto
+            await supabase.rpc('increment_balance', {
+                user_id: user.id,
+                amount: amount
+            })
+
+            await supabase.from("transactions").insert({
+                user_id: user.id,
+                amount: amount,
+                type: 'deposit',
+                provider: 'crypto_mock',
+                status: 'completed',
+                external_id: `mock_crypto_${Date.now()}`
+            })
+
+            return { success: true }
+        }
+
+        // Normally handled by Stripe webhooks, mocking immediate success here for TUG demo
+        await supabase.rpc('increment_balance', {
+            user_id: user.id,
+            amount: amount
+        })
+
+        await supabase.from("transactions").insert({
+            user_id: user.id,
+            amount: amount,
+            type: 'deposit',
+            provider: 'stripe_mock',
+            status: 'completed',
+            external_id: `mock_stripe_${Date.now()}`
+        })
+
+        return { success: true }
+    } catch (e: any) {
+        return { error: "Transaction failed: " + e.message }
+    }
+}
