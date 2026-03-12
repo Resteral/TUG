@@ -15,13 +15,14 @@ create policy "Users can insert own transactions" on public.transactions
 create or replace function increment_balance(user_id uuid, amount numeric)
 returns void as $$
 begin
-  -- Check if the user is updating their own balance
-  if auth.uid() != user_id then
-    raise exception 'Not authorized to update other users balance';
+  -- ONLY allow service_role or admin to call this directly
+  -- This prevents users from increasing their own balance via the public API
+  if current_setting('role') != 'service_role' and current_setting('role') != 'postgres' then
+    raise exception 'Not authorized to update balance via public API';
   end if;
 
   update public.users
   set balance = balance + amount
   where id = user_id;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;

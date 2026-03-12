@@ -12,7 +12,7 @@ export interface DraftSettings {
 }
 
 export interface DraftState {
-  status: "waiting" | "active" | "paused" | "completed"
+  status: "waiting" | "active" | "paused" | "completed" | "choosing_order"
   current_round: number
   current_pick: number
   current_team_index: number
@@ -21,6 +21,7 @@ export interface DraftState {
   draft_order: string[] // team IDs in draft order
   pick_history: DraftPick[]
   auction_state?: AuctionState
+  pass_first_pick?: boolean // Custom rule for TUG
 }
 
 export interface DraftPick {
@@ -93,38 +94,28 @@ export const tournamentDraftService = {
         pick_time_limit: tournament.player_pool_settings.pick_time_limit || 120,
       }
 
-      // Load teams in draft order
+      // Load teams in draft order (ELO based)
+      // Highest ELO = Team 1, 2nd Highest = Team 2
       const { data: teams } = await supabase
         .from("tournament_teams")
-        .select("id, team_name, draft_order")
+        .select("id, team_name, draft_order, team_captain, users!tournament_teams_team_captain_fkey(elo_rating)")
         .eq("tournament_id", tournamentId)
-        .order("draft_order")
+        .order("users(elo_rating)", { ascending: false })
 
       if (!teams || teams.length === 0) {
         throw new Error("No teams found for tournament")
       }
 
-      const draftOrder = this.generateDraftOrder(teams, settings)
-
+      // For custom TUG draft, we need to wait for the 2nd highest ELO decision
       const initialState: DraftState = {
-        status: "waiting",
+        status: "choosing_order",
         current_round: 1,
         current_pick: 1,
         current_team_index: 0,
-        current_team_id: draftOrder[0],
-        time_remaining: settings.pick_time_limit,
-        draft_order: draftOrder,
+        current_team_id: teams[1].id, // 2nd highest ELO chooses first
+        time_remaining: 30, // 30 seconds to choose
+        draft_order: [], // Will be generated after choice
         pick_history: [],
-        auction_state:
-          settings.draft_type === "auction"
-            ? {
-                current_player_id: null,
-                current_bid: 0,
-                highest_bidder_team_id: null,
-                bid_history: [],
-                auction_time_remaining: 60, // 1 minute per auction
-              }
-            : undefined,
       }
 
       // Save initial draft state
@@ -137,28 +128,75 @@ export const tournamentDraftService = {
     }
   },
 
-  generateDraftOrder(teams: { id: string; draft_order: number }[], settings: DraftSettings): string[] {
-    const teamIds = teams.map((t) => t.id)
-    const totalPicks = settings.num_teams * settings.players_per_team
-    const order: string[] = []
-
-    if (settings.draft_type === "snake") {
-      // Snake draft: reverse order every round
-      for (let round = 0; round < settings.players_per_team; round++) {
-        const roundOrder = round % 2 === 0 ? [...teamIds] : [...teamIds].reverse()
-        order.push(...roundOrder)
-      }
-    } else if (settings.draft_type === "linear") {
-      // Linear draft: same order every round
-      for (let round = 0; round < settings.players_per_team; round++) {
-        order.push(...teamIds)
-      }
-    } else {
-      // Auction draft: no predetermined order, teams bid on players
-      return teamIds
+  async setPassDecision(tournamentId: string, teamId: string, pass: boolean): Promise<DraftState> {
+    const currentState = await this.getDraftState(tournamentId)
+    if (!currentState || currentState.status !== "choosing_order") {
+        throw new Error("Not in order selection phase")
     }
 
-    return order.slice(0, totalPicks)
+    // Verify it's the correct team
+    if (currentState.current_team_id !== teamId) {
+        throw new Error("Only the 2nd highest ELO captain can choose")
+    }
+
+    const { data: teams } = await supabase
+      .from("tournament_teams")
+      .select("id")
+      .eq("tournament_id", tournamentId)
+      .order("users(elo_rating)", { ascending: false })
+
+    if (!teams || teams.length < 2) throw new Error("Teams not found")
+
+    const settings = await this.getTournamentSettings(tournamentId)
+    
+    // Custom TUG Snake Order: 8 players total, 2 captains used, 6 picks needed.
+    // teamIds[0] = highest ELO, teamIds[1] = 2nd highest ELO (Decider)
+    const teamIds = teams.map(t => t.id)
+    const deciderId = teamIds[1]
+    const highestId = teamIds[0]
+    
+    let draftOrder: string[] = []
+    if (!pass) {
+        // Decider takes 1st pick: 1, 2, 2, 1, 1, 2
+        draftOrder = [deciderId, highestId, highestId, deciderId, deciderId, highestId]
+    } else {
+        // Decider passes: Highest takes 1, 2. Decider takes 3, 4. Highest takes 5, 6
+        // User says: "they get 3rd and 4th pick" if they pass
+        // Order: Highest, Highest, Decider, Decider, Highest, Decider
+        draftOrder = [highestId, highestId, deciderId, deciderId, highestId, deciderId]
+    }
+
+    const newState: DraftState = {
+        ...currentState,
+        status: "active",
+        pass_first_pick: pass,
+        draft_order: draftOrder,
+        current_team_id: draftOrder[0],
+        time_remaining: 120
+    }
+
+    await this.saveDraftState(tournamentId, newState)
+    await this.broadcastDraftUpdate(tournamentId, newState, "draft_started")
+    this.startDraftTimer(tournamentId)
+    return newState
+  },
+
+  async getTournamentSettings(tournamentId: string): Promise<DraftSettings> {
+    const { data: tournament } = await supabase
+        .from("tournaments")
+        .select("player_pool_settings")
+        .eq("id", tournamentId)
+        .single()
+    return {
+        ...tournament?.player_pool_settings,
+        num_teams: tournament?.player_pool_settings.num_teams || 2,
+        players_per_team: tournament?.player_pool_settings.players_per_team || 4
+    }
+  },
+
+  generateDraftOrder(teams: { id: string; draft_order: number }[], settings: DraftSettings): string[] {
+    // This is now overridden by setPassDecision for custom TUG draft
+    return []
   },
 
   async startDraft(tournamentId: string, userId: string): Promise<DraftState> {
@@ -218,7 +256,6 @@ export const tournamentDraftService = {
         throw new Error("Only team captain can make draft picks")
       }
 
-      // Verify player is available
       const { data: player } = await supabase
         .from("tournament_player_pool")
         .select("status, users(username)")
@@ -238,11 +275,12 @@ export const tournamentDraftService = {
       await this.saveDraftState(tournamentId, newState)
 
       // Create pick record
+      const userData: any = player.users
       const pick: DraftPick = {
         pick_number: currentState.current_pick,
         team_id: teamId,
         player_id: playerId,
-        player_name: player.users?.username || "Unknown",
+        player_name: Array.isArray(userData) ? userData[0]?.username : userData?.username || "Unknown",
         cost: 0,
         timestamp: new Date().toISOString(),
       }
@@ -446,12 +484,20 @@ export const tournamentDraftService = {
 
       // Update team budget if cost > 0
       if (cost > 0) {
-        await supabase
-          .from("tournament_teams")
-          .update({
-            budget_remaining: supabase.raw("budget_remaining - ?", [cost]),
-          })
-          .eq("id", teamId)
+        const { data: team } = await supabase
+            .from("tournament_teams")
+            .select("budget_remaining")
+            .eq("id", teamId)
+            .single()
+        
+        if (team) {
+            await supabase
+              .from("tournament_teams")
+              .update({
+                budget_remaining: team.budget_remaining - cost,
+              })
+              .eq("id", teamId)
+        }
       }
     } catch (error) {
       console.error("Error executing draft pick:", error)
@@ -569,8 +615,8 @@ export const tournamentDraftService = {
           }
         }
 
-        // Stop timer if draft is completed
-        if (currentState.status === "completed") {
+        // Stop timer if draft is completed or no longer active
+        if ((currentState.status as any) === "completed" || currentState.status !== "active") {
           clearInterval(timer)
         }
       } catch (error) {
@@ -596,18 +642,19 @@ export const tournamentDraftService = {
       if (!data) return []
 
       return data
-        .map((entry) => {
-          const stats = entry.player_analytics || { goals: 0, assists: 0, saves: 0, games_played: 0 }
-          const totalScore = stats.goals + stats.assists + Math.abs(stats.saves)
+        .map((entry: any) => {
+          const stats = entry.player_analytics?.[0] || entry.player_analytics || { goals: 0, assists: 0, saves: 0, games_played: 0 }
+          const totalScore = (stats.goals || 0) + (stats.assists || 0) + Math.abs(stats.saves || 0)
 
+          const userData = entry.users
           return {
             id: entry.user_id,
-            username: entry.users?.username || "Unknown",
-            elo_rating: entry.users?.elo_rating || 1000,
+            username: Array.isArray(userData) ? userData[0]?.username : userData?.username || "Unknown",
+            elo_rating: Array.isArray(userData) ? userData[0]?.elo_rating : userData?.elo_rating || 1000,
             csv_stats: stats,
             total_score: totalScore,
             status: entry.status as "available" | "drafted",
-          }
+          } as Player
         })
         .sort((a, b) => b.total_score - a.total_score)
     } catch (error) {
@@ -642,20 +689,23 @@ export const tournamentDraftService = {
         id: team.id,
         name: team.team_name,
         captain_id: team.team_captain || "",
-        captain_name: team.users?.username || "TBD",
+        captain_name: Array.isArray(team.users) ? (team.users[0] as any)?.username : (team.users as any)?.username || "TBD",
         budget_remaining: team.budget_remaining || 0,
         draft_order: team.draft_order || 0,
         players:
-          team.team_members?.map((member: any) => ({
-            id: member.user_id,
-            username: member.users?.username || "Unknown",
-            elo_rating: member.users?.elo_rating || 1000,
-            csv_stats: { goals: 0, assists: 0, saves: 0, games_played: 0 }, // Would need to join with analytics
-            total_score: 0,
-            status: "drafted" as const,
-            draft_cost: member.draft_cost,
-            team_id: team.id,
-          })) || [],
+          team.team_members?.map((member: any) => {
+            const userData = member.users
+            return {
+              id: member.user_id,
+              username: Array.isArray(userData) ? userData[0]?.username : userData?.username || "Unknown",
+              elo_rating: Array.isArray(userData) ? userData[0]?.elo_rating : userData?.elo_rating || 1000,
+              csv_stats: { goals: 0, assists: 0, saves: 0, games_played: 0 }, // Would need to join with analytics
+              total_score: 0,
+              status: "drafted" as const,
+              draft_cost: member.draft_cost,
+              team_id: team.id,
+            }
+          }) || [],
       }))
     } catch (error) {
       console.error("Error loading teams with rosters:", error)

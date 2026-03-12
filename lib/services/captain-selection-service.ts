@@ -122,40 +122,24 @@ class CaptainSelectionService {
     const selectedCaptains = []
     const captainUpdates = []
 
-    // Select captains based on number of teams needed
+    // Select captains based on number of teams needed (requested Top 2 ELO)
     for (let i = 0; i < numTeams; i++) {
-      let player
-      let captainType: "high_elo" | "low_elo" | null = null
+        const player = processedPlayers[i] // Get top players in order of ELO
+        const captainType = i === 0 ? "highest_elo" : "second_highest_elo"
 
-      if (i === 0) {
-        // First captain: highest ELO
-        player = processedPlayers[0]
-        captainType = "high_elo"
-      } else if (i === 1 && numTeams >= 2) {
-        // Second captain: lowest ELO
-        player = processedPlayers[processedPlayers.length - 1]
-        captainType = "low_elo"
-      } else {
-        // Additional captains: middle ELO players, no captain_type due to DB constraint
-        const middleIndex = Math.floor(processedPlayers.length / (numTeams - 1)) * (i - 1)
-        const adjustedIndex = Math.min(middleIndex, processedPlayers.length - 1)
-        player = processedPlayers[adjustedIndex]
-        captainType = null // Set to null to avoid constraint violation
-      }
+        selectedCaptains.push({
+            id: player.user_id,
+            username: player.username,
+            elo_rating: player.elo_rating,
+            captain_type: captainType as any,
+        })
 
-      selectedCaptains.push({
-        id: player.user_id,
-        username: player.username,
-        elo_rating: player.elo_rating,
-        captain_type: captainType,
-      })
-
-      captainUpdates.push({
-        tournament_id: tournamentId,
-        user_id: player.user_id,
-        captain_type: captainType,
-        updated_at: new Date().toISOString(),
-      })
+        captainUpdates.push({
+            tournament_id: tournamentId,
+            user_id: player.user_id,
+            captain_type: captainType,
+            updated_at: new Date().toISOString(),
+        })
     }
 
     // Update database with captain selections
@@ -247,12 +231,12 @@ class CaptainSelectionService {
         }
       }
 
-      const alreadyCaptains = selectedPlayers.filter((p) => p.captain_type !== null)
+      const alreadyCaptains = selectedPlayers.filter((p: any) => p.captain_type !== null)
       if (alreadyCaptains.length > 0) {
         return {
           captains: [],
           success: false,
-          message: `Some selected players are already captains: ${alreadyCaptains.map((p) => p.users?.username).join(", ")}`,
+          message: `Some selected players are already captains: ${alreadyCaptains.map((p: any) => (Array.isArray(p.users) ? p.users[0]?.username : (p.users as any)?.username)).join(", ")}`,
         }
       }
 
@@ -268,8 +252,8 @@ class CaptainSelectionService {
       const sortedPlayers = selectedPlayers
         .map((entry: any) => ({
           user_id: entry.user_id,
-          username: entry.users?.username || "Unknown",
-          elo_rating: entry.users?.elo_rating || 1200,
+          username: Array.isArray(entry.users) ? entry.users[0]?.username : entry.users?.username || "Unknown",
+          elo_rating: Array.isArray(entry.users) ? entry.users[0]?.elo_rating : entry.users?.elo_rating || 1200,
         }))
         .sort((a, b) => b.elo_rating - a.elo_rating)
 

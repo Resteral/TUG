@@ -6,6 +6,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navigation } from "@/components/navigation"
 import { AuthProvider } from "@/lib/auth-context"
+import { ImmersiveBackground } from "@/components/ui/immersive-background"
 
 export const metadata: Metadata = {
   title: "TUG Arena",
@@ -33,6 +34,7 @@ html {
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <div className="min-h-screen flex flex-col bg-background">
+              <ImmersiveBackground />
               <Navigation />
               <main className="flex-1 pt-16">{children}</main>
               <footer className="border-t border-gray-800 py-8 bg-black/40">

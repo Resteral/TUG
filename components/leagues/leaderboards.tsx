@@ -83,26 +83,42 @@ export function Leaderboards() {
         setFantasyLeaders(fantasyLeaders)
       }
 
-      // Load highest earners (mock data for now)
-      const { data: earningsData } = await supabase
+      // Load highest earners
+      const { data: earnersProfiles } = await supabase
         .from("users")
         .select("id, username, elo_rating")
-        .order("elo_rating", { ascending: false })
-        .limit(20)
+        .limit(100)
 
-      if (earningsData) {
-        const earningsLeaders = earningsData.map((user, index) => ({
+      if (earnersProfiles) {
+        // Fetch all payout transactions for these users
+        const { data: payouts } = await supabase
+          .from("transactions")
+          .select("user_id, amount")
+          .eq("type", "tournament_payout")
+          .in("user_id", earnersProfiles.map(u => u.id))
+
+        const earningsMap = new Map<string, number>()
+        payouts?.forEach(p => {
+          earningsMap.set(p.user_id, (earningsMap.get(p.user_id) || 0) + p.amount)
+        })
+
+        const earningsLeaders = earnersProfiles.map((user) => ({
           id: user.id,
           username: user.username,
           elo_rating: user.elo_rating,
-          // Real earnings fetched from transaction aggregates or dedicated stats table
-          total_earnings: 0,
+          total_earnings: earningsMap.get(user.id) || 0,
           fantasy_team_value: 0,
           fantasy_team_name: "",
           division: getDivisionFromElo(user.elo_rating),
-          rank: index + 1,
+          rank: 0, // Will be set after sort
         }))
-        setEarningsLeaders(earningsLeaders.sort((a, b) => b.total_earnings - a.total_earnings))
+        
+        setEarningsLeaders(
+          earningsLeaders
+            .sort((a, b) => b.total_earnings - a.total_earnings)
+            .slice(0, 20)
+            .map((user, index) => ({ ...user, rank: index + 1 }))
+        )
       }
 
       setLoading(false)

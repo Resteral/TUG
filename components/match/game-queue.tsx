@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { joinMatch } from "@/lib/actions/match"
 import { GameConfig, GameMode, getAllowedModesForGame } from "@/lib/game-config"
-import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle } from "lucide-react"
+import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { readyCheckService } from "@/lib/services/ready-check-service"
 import { ReadyCheckModal } from "@/components/match/ready-check-modal"
@@ -115,139 +115,156 @@ export function GameQueue({ game }: GameQueueProps) {
     }
 
     return (
-        <Card className={`${game.color} bg-opacity-10 border-2`}>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                        <span className="text-2xl">{game.icon}</span>
-                        {game.name}
-                    </CardTitle>
-                    <div className="flex gap-2 items-center">
-                        {user && (
-                            <div className="flex gap-2">
-                                {!inQueue ? (
-                                    <>
-                                        <Button
-                                            onClick={() => handleQueueAction(5)}
-                                            disabled={queueLoading}
-                                            variant="default"
-                                            size="sm"
-                                            className="bg-green-600 hover:bg-green-700 font-bold"
-                                        >
-                                            $5
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleQueueAction(10)}
-                                            disabled={queueLoading}
-                                            variant="secondary"
-                                            size="sm"
-                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                                        >
-                                            $10
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleQueueAction(25)}
-                                            disabled={queueLoading}
-                                            variant="secondary"
-                                            size="sm"
-                                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
-                                        >
-                                            $25
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleQueueAction(50)}
-                                            disabled={queueLoading}
-                                            variant="secondary"
-                                            size="sm"
-                                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
-                                        >
-                                            $50
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleQueueAction(100)}
-                                            disabled={queueLoading}
-                                            variant="secondary"
-                                            size="sm"
-                                            className="bg-red-600 hover:bg-red-700 text-white font-bold"
-                                        >
-                                            $100
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <Button
-                                        onClick={() => handleQueueAction()}
-                                        disabled={queueLoading}
-                                        variant="destructive"
-                                        size="sm"
-                                    >
-                                        {queueLoading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                            <XCircle className="h-4 w-4 mr-2" />
-                                        )}
-                                        Leave Arena
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                        {allowedModes.map((mode) => (
-                            <Badge key={mode.id} variant="secondary" className={mode.color}>
-                                {mode.name}
+        <Card className="group border-white/5 bg-white/[0.02] backdrop-blur-xl overflow-hidden relative shadow-2xl transition-all duration-500 hover:border-primary/30 hover:bg-white/[0.04]">
+            {/* Background Accent Glow */}
+            <div className={`absolute -top-20 -right-20 size-64 bg-primary/10 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+            
+            <CardHeader className="relative z-10 border-b border-white/5 pb-6">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="size-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform bg-gradient-to-br from-white/10 to-transparent">
+                            {game.icon}
+                        </div>
+                        <div>
+                            <CardTitle className="text-2xl font-black text-white uppercase italic tracking-tighter">
+                                {game.name}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground font-medium">{game.description}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex gap-2">
+                            {allowedModes.map((mode) => (
+                                <Badge 
+                                    key={mode.id} 
+                                    className={`bg-white/5 border-white/10 text-white font-black italic tracking-widest text-[10px] uppercase px-3 py-1 rounded-lg ${mode.color.replace('bg-', 'text-')}`}
+                                >
+                                    {mode.name}
+                                </Badge>
+                            ))}
+                        </div>
+                        {inQueue && (
+                            <Badge className="bg-primary/20 text-primary border-primary/30 animate-pulse font-bold italic tracking-tighter">
+                                DEPLOYED IN QUEUE
                             </Badge>
-                        ))}
+                        )}
                     </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{game.description}</p>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-                {matches.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
-                        <Trophy className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No active lobbies</p>
-                        <p className="text-xs mt-1">Join the queue to start a new match!</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {matches.map((match) => (
-                            <Card key={match.id} className="bg-background/50">
-                                <CardContent className="p-4 flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-lg font-bold">${match.entry_fee} Entry</span>
-                                            <Badge variant="outline" className="text-xs">
-                                                {match.team_size}v{match.team_size}
-                                            </Badge>
-                                            {match.tournament_mode && (
-                                                <Badge variant="secondary" className="text-xs">
-                                                    <Trophy className="h-3 w-3 mr-1" />
-                                                    Tournament
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                            <span className="flex items-center gap-1">
-                                                <Users className="h-3 w-3" />
-                                                {match.creator?.username || "Unknown"}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {new Date(match.created_at).toLocaleTimeString()}
-                                            </span>
-                                        </div>
-                                    </div>
+
+            <CardContent className="p-6 relative z-10 space-y-6">
+                {/* Battle Stations (Queue Actions) */}
+                {user && (
+                    <div className="bg-black/40 rounded-2xl border border-white/5 p-4 space-y-4 shadow-inner">
+                        <div className="flex items-center justify-between px-2">
+                            <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground italic flex items-center gap-2">
+                                <Zap className="size-3 text-primary" />
+                                Select Entry Protocol
+                            </span>
+                            <span className="text-[10px] uppercase font-mono text-primary/70">4v4 SNAKE DRAFT</span>
+                        </div>
+                        
+                        {!inQueue ? (
+                            <div className="grid grid-cols-5 gap-2">
+                                {[5, 10, 25, 50, 100].map((fee) => (
                                     <Button
-                                        onClick={() => router.push(`/match/${match.id}`)}
-                                        variant="default"
-                                        size="sm"
-                                        className="bg-green-600 hover:bg-green-700"
+                                        key={fee}
+                                        onClick={() => handleQueueAction(fee)}
+                                        disabled={queueLoading}
+                                        variant="outline"
+                                        className={`h-14 flex flex-col items-center justify-center border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all group/btn rounded-xl overflow-hidden relative`}
                                     >
-                                        View Lobby
+                                        <span className="text-xs text-muted-foreground font-mono group-hover/btn:text-primary transition-colors">Entry</span>
+                                        <span className="text-sm font-black text-white italic tracking-tighter">${fee}</span>
+                                        {fee >= 50 && (
+                                            <div className="absolute top-0 right-0 p-1">
+                                                <div className="size-1 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]" />
+                                            </div>
+                                        )}
                                     </Button>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                ))}
+                            </div>
+                        ) : (
+                            <Button
+                                onClick={() => handleQueueAction()}
+                                disabled={queueLoading}
+                                variant="destructive"
+                                className="w-full h-14 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-500 font-black uppercase italic tracking-widest rounded-xl transition-all"
+                            >
+                                {queueLoading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        <XCircle className="size-5 mr-2" />
+                                        Abort Mission (Leave Queue)
+                                    </>
+                                )}
+                            </Button>
+                        )}
                     </div>
                 )}
+
+                {/* Active Skirmishes */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground italic flex items-center gap-2">
+                            <Trophy className="size-3 text-amber-500" />
+                            Active Arenas
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-mono opacity-50">{matches.length} Lobbies</Badge>
+                    </div>
+
+                    {matches.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground bg-white/[0.01] rounded-2xl border border-white/5 border-dashed">
+                            <PlayCircle className="size-10 mx-auto mb-3 opacity-20" />
+                            <p className="font-bold text-sm italic tracking-widest uppercase">Waiting for hostiles...</p>
+                            <p className="text-xs opacity-50 font-medium">Join queue to initiate a new match</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {matches.map((match) => (
+                                <div 
+                                    key={match.id} 
+                                    className="group/match bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer shadow-lg"
+                                    onClick={() => router.push(`/match/${match.id}`)}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-12 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center font-black text-primary italic tracking-tighter">
+                                            ${match.entry_fee}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-black text-white uppercase italic tracking-tighter">Premier Skirmish</h4>
+                                                <Badge variant="outline" className="text-[10px] px-2 py-0 h-4 border-white/10 font-mono text-muted-foreground">
+                                                    {match.team_size}v{match.team_size}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                                                <span className="flex items-center gap-1.5">
+                                                    <Users className="size-3 text-primary" />
+                                                    {match.creator?.username || "Ghost"}
+                                                </span>
+                                                <span className="flex items-center gap-1.5">
+                                                    <Clock className="size-3" />
+                                                    {new Date(match.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            size="sm"
+                                            className="bg-white/5 hover:bg-primary hover:text-white text-muted-foreground border-white/5 font-black uppercase italic tracking-widest rounded-lg px-4 transition-all"
+                                        >
+                                            Infiltrate
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </CardContent>
             {user && <ReadyCheckModal userId={user.id} />}
         </Card>

@@ -44,6 +44,7 @@ export function TournamentDraftRoom({
     placeBid,
     startPlayerAuction,
     pauseDraft,
+    setPassDecision,
     isConnected,
     lastUpdate,
   } = useTournamentDraft(tournamentId, user?.id)
@@ -52,6 +53,9 @@ export function TournamentDraftRoom({
 
   const getCurrentTeam = () => {
     if (!draftState || !teams.length) return null
+    if (draftState.status === "choosing_order") {
+      return teams.find((t) => t.id === draftState.current_team_id) || null
+    }
     return teams[draftState.current_team_index]
   }
 
@@ -133,7 +137,68 @@ export function TournamentDraftRoom({
         </Card>
       )}
 
-      {/* Draft Status Header */}
+      {/* Strategic Initiative Selection Protocol */}
+      {draftState?.status === "choosing_order" && (
+        <Card className="border-primary/50 bg-primary/5 backdrop-blur-xl shadow-[0_0_30px_rgba(var(--primary),0.1)] overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50" />
+          <CardContent className="pt-10 pb-10 relative z-10">
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="size-20 rounded-3xl bg-primary/20 border border-primary/30 flex items-center justify-center animate-bounce-slow shadow-[0_0_20px_rgba(var(--primary),0.2)]">
+                <Zap className="size-10 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter">Strategic Initiative</h3>
+                <div className="flex items-center justify-center gap-3">
+                    <Badge variant="outline" className="bg-amber-500/10 border-amber-500/50 text-amber-500 font-black italic">COMMAND PHASE</Badge>
+                    <p className="text-muted-foreground font-bold">
+                        <strong>{getCurrentTeam()?.captain_name}</strong> holds the initiative
+                    </p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mt-4 max-w-lg mx-auto">
+                    <p className="text-sm italic text-muted-foreground leading-relaxed">
+                        "As the 2nd highest ranked captain, you possess the tactical advantage. Choose to command the first pick, or defer the opening move to claim superior mid-round positioning."
+                    </p>
+                </div>
+              </div>
+              
+              {isUserTurn() ? (
+                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg mt-4">
+                    <Button 
+                        onClick={() => setPassDecision(false)} 
+                        className="flex-1 h-20 bg-primary hover:bg-primary/80 text-white font-black uppercase italic tracking-widest rounded-2xl border-t border-white/20 shadow-2xl transition-all hover:scale-[1.02]"
+                    >
+                        <div className="flex flex-col items-center">
+                            <span>Claim #1 Pick</span>
+                            <span className="text-[10px] opacity-70 font-mono font-normal normal-case mt-1">Direct snake: 1, 2, 2, 1, 1, 2</span>
+                        </div>
+                    </Button>
+                    <Button 
+                        onClick={() => setPassDecision(true)} 
+                        variant="outline"
+                        className="flex-1 h-20 border-primary/30 hover:bg-primary/10 text-primary font-black uppercase italic tracking-widest rounded-2xl transition-all hover:scale-[1.02]"
+                    >
+                        <div className="flex flex-col items-center">
+                            <span>Strategic Pass</span>
+                            <span className="text-[10px] opacity-70 font-mono font-normal normal-case mt-1">Gain picks #3 and #4 instead</span>
+                        </div>
+                    </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-6 bg-white/5 rounded-2xl px-8 border border-white/5">
+                    <div className="flex items-center gap-3">
+                        <Timer className="size-5 text-primary animate-pulse" />
+                        <p className="text-white font-black uppercase tracking-widest text-sm italic">Transmission Incoming...</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground uppercase font-mono tracking-tighter">Waiting for {getCurrentTeam()?.captain_name} to deploy strategy</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          <div className="absolute -bottom-10 -right-10 size-40 bg-primary/10 blur-[50px]" />
+        </Card>
+      )}
+
+      {/* Existing Header */}
       <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -198,64 +263,6 @@ export function TournamentDraftRoom({
           </CardContent>
         )}
       </Card>
-
-      {/* Team Customization Panel */}
-      {showTeamCustomization && isUserCaptain() && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-yellow-500" />
-                Captain Team Customization
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => setShowTeamCustomization(false)}>
-                ×
-              </Button>
-            </CardTitle>
-            <CardDescription>
-              Customize your team's name, logo, colors, and draft strategy as the team captain.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CaptainTeamCustomization
-              tournamentId={tournamentId}
-              tournament={tournament}
-              onCustomizationSaved={() => {
-                // Refresh team data after customization is saved
-                window.location.reload()
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Current Turn Indicator */}
-      {draftState?.status === "active" && (
-        <Card className="border-amber-500/20 bg-amber-500/5">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Crown className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="font-medium">
-                    {getCurrentTeam()?.name}'s Turn
-                    {isUserTurn() && <span className="text-primary ml-2">(Your Turn!)</span>}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Captain: {getCurrentTeam()?.captain_name}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-amber-500">
-                  {Math.floor((draftState.time_remaining || 0) / 60)}:
-                  {((draftState.time_remaining || 0) % 60).toString().padStart(2, "0")}
-                </div>
-                <div className="text-xs text-muted-foreground">Time Remaining</div>
-              </div>
-            </div>
-            <Progress value={((120 - (draftState.time_remaining || 0)) / 120) * 100} className="mt-3" />
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Teams */}
@@ -399,7 +406,7 @@ export function TournamentDraftRoom({
                         </span>
                       </div>
                     </div>
-                    {isUserTurn() && (
+                    {isUserTurn() && draftSettings && (
                       <Button
                         size="sm"
                         onClick={(e) => {
@@ -407,7 +414,7 @@ export function TournamentDraftRoom({
                           handleDraftPlayer(player.id)
                         }}
                       >
-                        {draftSettings?.draft_type === "auction" ? "Bid" : "Draft"}
+                        {draftSettings.draft_type === "auction" ? "Bid" : "Draft"}
                       </Button>
                     )}
                   </div>

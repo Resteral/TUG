@@ -13,6 +13,7 @@ interface User {
   created_at: string
   role?: string // Added role field for permissions
   email?: string // Added email from Supabase auth
+  avatar_url?: string // Added avatar_url
 }
 
 interface AuthContextType {
@@ -102,12 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: data.created_at,
         role: data.role || "user",
         email: session.user.email,
+        avatar_url: data.avatar_url,
       }
 
       console.log("[v0] User authenticated:", {
         id: updatedUser.id,
         username: updatedUser.username,
         role: updatedUser.role,
+        avatar_url: updatedUser.avatar_url,
       })
 
       setUser(updatedUser)
@@ -138,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: data.created_at,
           role: data.role || "user",
           email: supabaseUser.email,
+          avatar_url: data.avatar_url,
         }
         setUser(updatedUser)
         localStorage.setItem("fantasy_user", JSON.stringify(updatedUser))

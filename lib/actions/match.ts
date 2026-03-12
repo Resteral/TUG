@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { isModeAllowedForGame } from "@/lib/game-config"
@@ -38,15 +38,16 @@ export async function createMatch(formData: FormData) {
     }
 
     // Atomic Deduct (Lock funds)
-    const { error: txError } = await supabase.rpc("increment_balance", {
+    const adminSupabase = await createAdminClient()
+    const { error: txError } = await adminSupabase.rpc("increment_balance", {
         user_id: user.id,
         amount: -entryFee,
     })
 
     if (txError) return { error: "Transaction failed: Insufficient funds" }
 
-    // Log Transaction
-    const { error: logError } = await supabase.from("transactions").insert({
+    // Log Transaction (Use admin client or regular client if RLS allows)
+    const { error: logError } = await adminSupabase.from("transactions").insert({
         user_id: user.id,
         amount: -entryFee,
         type: "entry_fee_payment",
@@ -74,9 +75,10 @@ export async function createMatch(formData: FormData) {
 
     if (matchError) {
         // Refund on failure
-        await supabase.rpc("increment_balance", { user_id: user.id, amount: entryFee })
+        const adminSupabase = await createAdminClient()
+        await adminSupabase.rpc("increment_balance", { user_id: user.id, amount: entryFee })
         // Log Refund
-        await supabase.from("transactions").insert({
+        await adminSupabase.from("transactions").insert({
             user_id: user.id,
             amount: entryFee,
             type: "refund",
@@ -113,14 +115,15 @@ export async function joinMatch(matchId: string, teamId: number) {
     if (!profile || profile.balance < match.entry_fee) return { error: "Insufficient funds" }
 
     // Atomic Deduct
-    const { error: txError } = await supabase.rpc('increment_balance', {
+    const adminSupabase = await createAdminClient()
+    const { error: txError } = await adminSupabase.rpc('increment_balance', {
         user_id: user.id,
         amount: -match.entry_fee
     })
     if (txError) return { error: "Transaction failed: Insufficient funds" }
 
     // Log Transaction
-    await supabase.from("transactions").insert({
+    await adminSupabase.from("transactions").insert({
         user_id: user.id,
         amount: -match.entry_fee,
         type: 'entry_fee_payment',
@@ -139,8 +142,9 @@ export async function joinMatch(matchId: string, teamId: number) {
 
     if (joinError) {
         // Refund
-        await supabase.rpc('increment_balance', { user_id: user.id, amount: match.entry_fee })
-        await supabase.from("transactions").insert({
+        const adminSupabase = await createAdminClient()
+        await adminSupabase.rpc('increment_balance', { user_id: user.id, amount: match.entry_fee })
+        await adminSupabase.from("transactions").insert({
             user_id: user.id,
             amount: match.entry_fee,
             type: 'refund',
@@ -219,13 +223,14 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
         const payoutPerWinner = totalPot / winners.length
 
         // Distribute
+        const adminSupabase = await createAdminClient()
         for (const winner of winners) {
-            await supabase.rpc('increment_balance', {
+            await adminSupabase.rpc('increment_balance', {
                 user_id: winner.user_id,
                 amount: payoutPerWinner
             })
 
-            await supabase.from("transactions").insert({
+            await adminSupabase.from("transactions").insert({
                 user_id: winner.user_id,
                 amount: payoutPerWinner,
                 type: 'tournament_payout',

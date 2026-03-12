@@ -30,6 +30,7 @@ export interface TournamentDraftHookReturn {
   placeBid: (playerId: string, teamId: string, bidAmount: number) => Promise<void>
   startPlayerAuction: (playerId: string) => Promise<void>
   pauseDraft: () => Promise<void>
+  setPassDecision: (pass: boolean) => Promise<void>
 
   // Real-time status
   isConnected: boolean
@@ -326,6 +327,30 @@ export function useTournamentDraft(tournamentId: string, userId?: string): Tourn
     }
   }, [tournamentId, userId])
 
+  const setPassDecision = useCallback(
+    async (pass: boolean) => {
+      if (!userId || !tournamentId) {
+        setError("Authentication required")
+        return
+      }
+
+      const currentTeam = teams.find((t) => t.captain_id === userId)
+      if (!currentTeam) {
+        setError("Only captains can make decisions")
+        return
+      }
+
+      try {
+        setError(null)
+        const newState = await tournamentDraftService.setPassDecision(tournamentId, currentTeam.id, pass)
+        setDraftState(newState)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to set pass decision")
+      }
+    },
+    [tournamentId, userId, teams],
+  )
+
   return {
     // State
     draftState,
@@ -342,6 +367,7 @@ export function useTournamentDraft(tournamentId: string, userId?: string): Tourn
     placeBid,
     startPlayerAuction,
     pauseDraft,
+    setPassDecision,
 
     // Real-time status
     isConnected,
