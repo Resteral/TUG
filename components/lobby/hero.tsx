@@ -1,20 +1,25 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Trophy, Zap, Users, ArrowRight } from "lucide-react"
+import { useLobbyStats } from "@/lib/hooks/use-lobby-stats"
+import { IntelModal } from "./intel-modal"
+import { ArenaTicker } from "./arena-ticker"
 
 export const Hero: React.FC = () => {
+    const { activeCommandos, bountyPool, loading } = useLobbyStats()
+    const [isIntelOpen, setIsIntelOpen] = useState(false)
+
     return (
         <div className="relative overflow-hidden rounded-[2.5rem] bg-black border border-white/10 shadow-2xl mb-12">
             {/* Background Image / Overlay */}
             <div className="absolute inset-0 opacity-40">
                 <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
-                {/* We'll use the generated image path here if possible, but for dev we use a placeholder or the actual path if we had it in a public dir */}
                 <div 
                     className="w-full h-full bg-cover bg-center animate-pulse-slow" 
-                    style={{ backgroundImage: 'url("/assets/hero-bg.png")' }} // Fallback/Placeholder
+                    style={{ backgroundImage: 'url("/tug_hero_background_1773277817907.png")' }} 
                 />
             </div>
 
@@ -41,7 +46,13 @@ export const Hero: React.FC = () => {
                             <Users className="size-6 text-primary" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-white italic tracking-tighter">1,248</p>
+                            {loading ? (
+                                <div className="h-8 w-16 bg-white/5 animate-pulse rounded" />
+                            ) : (
+                                <p className="text-2xl font-black text-white italic tracking-tighter tabular-nums">
+                                    {activeCommandos.toLocaleString()}
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground uppercase font-mono">Active Commandos</p>
                         </div>
                     </div>
@@ -51,7 +62,13 @@ export const Hero: React.FC = () => {
                             <Trophy className="size-6 text-amber-500" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-white italic tracking-tighter">$45,280</p>
+                            {loading ? (
+                                <div className="h-8 w-24 bg-white/5 animate-pulse rounded" />
+                            ) : (
+                                <p className="text-2xl font-black text-white italic tracking-tighter tabular-nums">
+                                    ${bountyPool.toLocaleString()}
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground uppercase font-mono">Bounty Pool</p>
                         </div>
                     </div>
@@ -62,16 +79,24 @@ export const Hero: React.FC = () => {
                         Enter Arena
                         <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
-                    <Button variant="outline" className="h-16 px-10 border-white/10 hover:bg-white/5 text-white font-black uppercase italic tracking-widest rounded-2xl">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => setIsIntelOpen(true)}
+                        className="h-16 px-10 border-white/10 hover:bg-white/5 text-white font-black uppercase italic tracking-widest rounded-2xl"
+                    >
                         View Intel
                     </Button>
                 </div>
             </div>
 
+            <IntelModal isOpen={isIntelOpen} onClose={() => setIsIntelOpen(false)} />
+
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 p-8 hidden lg:block">
                 <div className="size-64 rounded-full bg-primary/20 blur-[100px] animate-pulse" />
             </div>
+
+            <ArenaTicker />
         </div>
     )
 }
