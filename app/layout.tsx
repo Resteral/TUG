@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Navigation } from "@/components/navigation"
 import { AuthProvider } from "@/lib/auth-context"
 import { ImmersiveBackground } from "@/components/ui/immersive-background"
+import { QueueMonitor } from "@/components/match/queue-monitor"
 
 export const metadata: Metadata = {
   title: "TUG Arena",
@@ -35,6 +36,7 @@ html {
           <AuthProvider>
             <div className="min-h-screen flex flex-col bg-background">
               <ImmersiveBackground />
+              <QueueMonitor />
               <Navigation />
               <main className="flex-1 pt-16">{children}</main>
               <footer className="border-t border-gray-800 py-8 bg-black/40">

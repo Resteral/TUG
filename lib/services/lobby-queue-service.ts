@@ -247,9 +247,10 @@ export const lobbyQueueService = {
 
     // Add all players as participants
     const participantInserts = playersForMatch.map((player: any) => ({
+      tournament_id: tournament.id,
       user_id: player.user_id,
       joined_at: new Date().toISOString(),
-      status: "pending_ready", // Set status to pending_ready
+      status: "pending_ready",
     }))
 
     const { error: participantError } = await supabase.from("tournament_participants").insert(participantInserts)

@@ -602,7 +602,7 @@ class CaptainSelectionService {
           users(username, elo_rating)
         `)
         .eq("tournament_id", tournamentId)
-        .eq("status", "registered")
+        .in("status", ["registered", "pending_ready", "ready"])
 
       if (participants && participants.length > 0) {
         const poolEntries = participants.map((participant: any) => ({
