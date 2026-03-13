@@ -10,7 +10,7 @@ export function DraftRoomClient({ tournamentId, userId }: { tournamentId: string
     const router = useRouter()
 
     useEffect(() => {
-        if (draftState?.status === "completed") {
+        if (draftState?.status === "completed" || draftState?.status === "active") {
             router.push(`/draft/score/${tournamentId}`)
         }
     }, [draftState?.status, router, tournamentId])

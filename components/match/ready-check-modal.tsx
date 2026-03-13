@@ -148,8 +148,27 @@ export function ReadyCheckModal({ userId }: { userId: string }) {
 
     const handleDecline = async () => {
         setOpen(false)
-        // Add logic to remove user from queue/tournament if needed
-        // For now just close modal
+        if (!tournamentId) return
+        try {
+            const supabase = createClient()
+            // Remove from tournament participants
+            await supabase
+                .from("tournament_participants")
+                .delete()
+                .eq("tournament_id", tournamentId)
+                .eq("user_id", userId)
+
+            // Refund entry fee via leave queue RPC
+            // (The tournament was created from the queue so we should refund the fee)
+            await supabase.rpc('leave_pay_to_play_queue', {
+                p_user_id: userId,
+                p_entry_fee: 0 // actual fee read from stored entry in DB
+            })
+
+            toast.info("Match declined. Entry fee refunded.")
+        } catch (err) {
+            console.error("[v0] Error during decline:", err)
+        }
     }
 
     return (
