@@ -88,9 +88,10 @@ export function GameQueue({ game }: GameQueueProps) {
                 setInQueue(true)
                 toast.success(`Joined ${fee === 5 ? 'Standard' : 'Premier'} Arena ($${fee})!`)
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            toast.error("Failed to update queue status")
+            const msg = error?.message || "Failed to update queue status"
+            toast.error(msg)
         } finally {
             setQueueLoading(false)
         }
