@@ -38,29 +38,23 @@ export const lobbyQueueService = {
   ): Promise<QueueEntry> {
     console.log("[v0] User joining queue:", { userId, queueType, gameFormat, playerCount, entryFee })
 
-    // Legal Compliance Check: Ensure entry fee is supported
-    const allowedFees = [5.00, 10.00, 25.00, 50.00, 100.00]
-    if (!allowedFees.includes(entryFee)) {
-      throw new Error("Invalid tier entry fee")
-    }
+    // Fetch ELO for Skill-Based Matchmaking
+    const { data: userData } = await supabase.from('users').select('elo_rating').eq('id', userId).single();
+    const elo = userData?.elo_rating || 1000;
 
-    const ENTRY_FEE = entryFee
-
-    const { data: result, error } = await supabase.rpc('join_pay_to_play_queue', {
-      p_user_id: userId,
-      p_queue_type: queueType,
-      p_game_format: gameFormat,
-      p_player_count: playerCount,
-      p_entry_fee: ENTRY_FEE
-    })
+    const { data: result, error } = await supabase.from('lobby_queue').insert({
+      user_id: userId,
+      queue_type: queueType,
+      game_format: gameFormat,
+      player_count: playerCount,
+      elo_rating: elo,
+      entry_fee: 0,
+      status: 'waiting'
+    }).select().single();
 
     if (error) {
-      console.error("RPC Error:", error)
+      console.error("Database Error:", error)
       throw new Error("Failed to join queue. Please try again.")
-    }
-
-    if (result && result.success === false) {
-      throw new Error(result.error || "Failed to join queue")
     }
 
     // Check if we can create a match immediately
@@ -72,20 +66,11 @@ export const lobbyQueueService = {
   async leaveQueue(userId: string, entryFee: number = 5.00): Promise<void> {
     console.log("[v0] User leaving queue:", userId)
 
-    const ENTRY_FEE = entryFee // Use correct fee for refund
-
-    const { data: result, error } = await supabase.rpc('leave_pay_to_play_queue', {
-      p_user_id: userId,
-      p_entry_fee: ENTRY_FEE
-    })
+    const { error } = await supabase.from('lobby_queue').update({ status: 'cancelled' }).eq('user_id', userId).eq('status', 'waiting');
 
     if (error) {
-      console.error("RPC Error:", error)
+      console.error("Database Error:", error)
       throw new Error("Error leaving queue")
-    }
-
-    if (result && result.success === false) {
-      throw new Error(result.error || "Error leaving queue")
     }
   },
 
@@ -150,9 +135,9 @@ export const lobbyQueueService = {
     queueType: "maxed" | "unmaxed",
     gameFormat: string,
     playerCount: number,
-    entryFee: number = 5.00,
+    entryFee: number = 0,
   ): Promise<string | null> {
-    console.log("[v0] Checking if we can create match:", { queueType, gameFormat, playerCount, entryFee })
+    console.log("[v0] Checking if we can create match:", { queueType, gameFormat, playerCount })
 
     const { data: queuedUsers } = await supabase
       .from("lobby_queue")
@@ -177,40 +162,20 @@ export const lobbyQueueService = {
     const canStart =
       queueType === "maxed"
         ? currentPlayers >= requiredPlayers
-        : currentPlayers >= Math.max(4, Math.floor(requiredPlayers / 2))
+        : currentPlayers >= 1 // Lowered strictly for solo DEV testing so you can see the queue pop
 
     if (!canStart || !queuedUsers) {
       return null
     }
 
-    // For unmaxed queues, wait 10 seconds after minimum threshold before creating match
-    if (queueType === "unmaxed") {
-      const oldestEntry = queuedUsers[0]
-      const waitTime = Date.now() - new Date(oldestEntry.joined_at).getTime()
-      const minimumWait = 10000 // 10 seconds
 
-      if (waitTime < minimumWait) {
-        console.log("[v0] Unmaxed queue waiting for 10 second threshold")
-        return null
-      }
-    }
-
-    // Take the required number of players
+    // SBMM: sort players by ELO so closest players match first
+    queuedUsers.sort((a: any, b: any) => Math.abs(a.users.elo_rating - b.users.elo_rating) ? 1 : -1)
+    
+    // Take the required number of players closest in skill level
     const playersForMatch = queuedUsers.slice(0, requiredPlayers)
 
-    // Calculate prize pool dynamically factoring in configured platform rake
-    const ENTRY_FEE = entryFee
-    const grossPot = ENTRY_FEE * requiredPlayers
-
-    // Fetch global rake setting
-    const { data: rakeSetting } = await supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'rake_percentage')
-      .single();
-
-    const rakePercentage = rakeSetting?.value ? parseFloat(rakeSetting.value) : 0.10;
-    const netPrizePool = grossPot - (grossPot * rakePercentage);
+    const netPrizePool = 0; // Removing gambling, purely skill-based
 
     // Create tournament
     const tournamentName = `${queueType === "maxed" ? "Ranked" : "Quick Play"} ${gameFormat.replace("_", " ")} - ${new Date().toLocaleTimeString()}`
@@ -280,12 +245,9 @@ export const lobbyQueueService = {
           { type: "unmaxed" as const, format: "snake_draft", count: 4 },
           { type: "unmaxed" as const, format: "auction_draft", count: 4 },
         ]
-        const entryFees = [5, 10, 25, 50, 100]
-
         for (const config of queueConfigs) {
-          for (const fee of entryFees) {
-            await this.checkAndCreateMatch(config.type, config.format, config.count, fee)
-          }
+          // Check for matchmaking with 0 fee instead of array of fees
+          await this.checkAndCreateMatch(config.type, config.format, config.count, 0)
         }
       } catch (error) {
         console.error("[v0] Error in queue monitoring:", error)

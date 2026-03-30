@@ -41,6 +41,7 @@ const navigation = [
   { name: "Wallet", href: "/wallet", icon: DollarSign },
   { name: "Discord", href: "https://discord.gg/TBV2XxmUkc", icon: MessageSquare, external: true },
   { name: "My Matches", href: "/matches", icon: Gamepad2 },
+  { name: "Stats", href: "/stats", icon: BarChart3 },
 ]
 
 export function Navigation() {

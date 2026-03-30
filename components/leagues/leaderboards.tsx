@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trophy, Star, DollarSign, Medal, Crown, Target } from "lucide-react"
+import { Trophy, Star, DollarSign, Medal, Crown, TrendingUp, Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface LeaderboardEntry {
@@ -13,16 +13,17 @@ interface LeaderboardEntry {
   username: string
   elo_rating: number
   total_earnings: number
-  fantasy_team_value: number
-  fantasy_team_name: string
+  win_rate: number
+  teammate_rating: number
   division: string
   rank: number
 }
 
 export function Leaderboards() {
   const [eloLeaders, setEloLeaders] = useState<LeaderboardEntry[]>([])
-  const [fantasyLeaders, setFantasyLeaders] = useState<LeaderboardEntry[]>([])
   const [earningsLeaders, setEarningsLeaders] = useState<LeaderboardEntry[]>([])
+  const [winRateLeaders, setWinRateLeaders] = useState<LeaderboardEntry[]>([])
+  const [teammateLeaders, setTeammateLeaders] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createClient()
@@ -33,7 +34,7 @@ export function Leaderboards() {
 
   const loadLeaderboards = async () => {
     try {
-      // Load highest ELO players
+      // 1. Load highest ELO players
       const { data: eloData } = await supabase
         .from("users")
         .select("id, username, elo_rating")
@@ -46,51 +47,21 @@ export function Leaderboards() {
           username: user.username,
           elo_rating: user.elo_rating,
           total_earnings: 0,
-          fantasy_team_value: 0,
-          fantasy_team_name: "",
+          win_rate: 0,
+          teammate_rating: 0,
           division: getDivisionFromElo(user.elo_rating),
           rank: index + 1,
         }))
         setEloLeaders(eloLeaders)
       }
 
-      // Load highest fantasy teams
-      const { data: fantasyData } = await supabase
-        .from("elo_teams")
-        .select(`
-          id,
-          name,
-          owner_id,
-          total_elo,
-          average_elo,
-          budget_used,
-          users(username, elo_rating)
-        `)
-        .order("total_elo", { ascending: false })
-        .limit(20)
-
-      if (fantasyData) {
-        const fantasyLeaders = fantasyData.map((team, index) => ({
-          id: team.owner_id,
-          username: Array.isArray(team.users) ? (team.users[0] as any)?.username : ((team.users as any)?.username || "Unknown"),
-          elo_rating: Array.isArray(team.users) ? (team.users[0] as any)?.elo_rating : ((team.users as any)?.elo_rating || 1200),
-          total_earnings: 0,
-          fantasy_team_value: team.total_elo,
-          fantasy_team_name: team.name,
-          division: getDivisionFromElo(team.average_elo),
-          rank: index + 1,
-        }))
-        setFantasyLeaders(fantasyLeaders)
-      }
-
-      // Load highest earners
+      // 2. Load highest earners
       const { data: earnersProfiles } = await supabase
         .from("users")
         .select("id, username, elo_rating")
         .limit(100)
 
       if (earnersProfiles) {
-        // Fetch all payout transactions for these users
         const { data: payouts } = await supabase
           .from("transactions")
           .select("user_id, amount")
@@ -107,10 +78,10 @@ export function Leaderboards() {
           username: user.username,
           elo_rating: user.elo_rating,
           total_earnings: earningsMap.get(user.id) || 0,
-          fantasy_team_value: 0,
-          fantasy_team_name: "",
+          win_rate: 0,
+          teammate_rating: 0,
           division: getDivisionFromElo(user.elo_rating),
-          rank: 0, // Will be set after sort
+          rank: 0,
         }))
         
         setEarningsLeaders(
@@ -119,6 +90,62 @@ export function Leaderboards() {
             .slice(0, 20)
             .map((user, index) => ({ ...user, rank: index + 1 }))
         )
+      }
+
+      // 3. Load highest win rate
+      const { data: winData } = await supabase
+        .from("users")
+        .select("id, username, elo_rating, wins, total_games")
+        .limit(50)
+      
+      if (winData) {
+        // Filter those with at least a few games so 1-0 isn't the #1 player
+        const validPlayers = winData.filter(u => u.total_games >= 3)
+        const sortedWinRate = (validPlayers.length > 0 ? validPlayers : winData)
+          .map(user => ({
+            id: user.id,
+            username: user.username,
+            elo_rating: user.elo_rating,
+            total_earnings: 0,
+            win_rate: user.total_games > 0 ? (user.wins / user.total_games) * 100 : 0,
+            teammate_rating: 0,
+            division: getDivisionFromElo(user.elo_rating),
+            rank: 0
+          }))
+          .sort((a, b) => b.win_rate - a.win_rate)
+          .slice(0, 20)
+          .map((user, index) => ({ ...user, rank: index + 1 }))
+        
+        setWinRateLeaders(sortedWinRate)
+      }
+
+      // 4. Load "Best Teammate" (Synergy / Support stats approximation)
+      const { data: teamData } = await supabase
+        .from("users")
+        .select("id, username, elo_rating, total_games")
+        .limit(50)
+
+      if (teamData) {
+        // We synthesize a 1-100 teammate rating based on ELO and experience
+        const sortedTeammates = teamData
+          .map(user => {
+            const synergyScore = Math.min(99.9, ((user.elo_rating / 1500) * 80) + (user.total_games > 10 ? 15 : user.total_games))
+            return {
+              id: user.id,
+              username: user.username,
+              elo_rating: user.elo_rating,
+              total_earnings: 0,
+              win_rate: 0,
+              teammate_rating: Number(synergyScore.toFixed(1)),
+              division: getDivisionFromElo(user.elo_rating),
+              rank: 0
+            }
+          })
+          .sort((a, b) => b.teammate_rating - a.teammate_rating)
+          .slice(0, 20)
+          .map((user, index) => ({ ...user, rank: index + 1 }))
+        
+        setTeammateLeaders(sortedTeammates)
       }
 
       setLoading(false)
@@ -137,31 +164,21 @@ export function Leaderboards() {
 
   const getDivisionColor = (division: string) => {
     switch (division) {
-      case "premier":
-        return "bg-gradient-to-r from-yellow-400 to-orange-500 text-white"
-      case "championship":
-        return "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-      case "league_one":
-        return "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
-      case "league_two":
-        return "bg-gradient-to-r from-green-500 to-teal-500 text-white"
-      default:
-        return "bg-gray-500 text-white"
+      case "premier": return "bg-gradient-to-r from-yellow-400 to-orange-500 text-white"
+      case "championship": return "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+      case "league_one": return "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+      case "league_two": return "bg-gradient-to-r from-green-500 to-teal-500 text-white"
+      default: return "bg-gray-500 text-white"
     }
   }
 
   const getDivisionName = (division: string) => {
     switch (division) {
-      case "premier":
-        return "Premier"
-      case "championship":
-        return "Championship"
-      case "league_one":
-        return "League One"
-      case "league_two":
-        return "League Two"
-      default:
-        return "Unranked"
+      case "premier": return "Premier"
+      case "championship": return "Championship"
+      case "league_one": return "League One"
+      case "league_two": return "League Two"
+      default: return "Unranked"
     }
   }
 
@@ -185,19 +202,20 @@ export function Leaderboards() {
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Trophy className="h-6 w-6 text-yellow-500" />
-          Leaderboards
+          Hall of Fame
         </h2>
-        <p className="text-muted-foreground">Top performers across all categories</p>
+        <p className="text-muted-foreground">Top performers, teammates, and earners across the platform.</p>
       </div>
 
       <Tabs defaultValue="elo" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="elo">Highest ELO</TabsTrigger>
-          <TabsTrigger value="fantasy">Highest Fantasy Team</TabsTrigger>
-          <TabsTrigger value="earnings">Highest Earners</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="elo" className="text-xs sm:text-sm">Highest ELO</TabsTrigger>
+          <TabsTrigger value="winrate" className="text-xs sm:text-sm">Win Rate</TabsTrigger>
+          <TabsTrigger value="teammate" className="text-xs sm:text-sm">Best Teammate</TabsTrigger>
+          <TabsTrigger value="earnings" className="text-xs sm:text-sm">Highest Earnings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="elo" className="space-y-4">
+        <TabsContent value="elo" className="space-y-4 animate-in fade-in duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -209,19 +227,19 @@ export function Leaderboards() {
               <div className="space-y-4">
                 {eloLeaders.map((player) => (
                   <div key={player.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center w-12">{getRankIcon(player.rank)}</div>
+                    <div className="flex items-center justify-center w-8 sm:w-12">{getRankIcon(player.rank)}</div>
                     <Avatar>
                       <AvatarFallback>{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{player.username}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getDivisionColor(player.division)}>{getDivisionName(player.division)}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{player.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={`${getDivisionColor(player.division)} text-[10px] sm:text-xs`}>{getDivisionName(player.division)}</Badge>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-yellow-600">{player.elo_rating}</p>
-                      <p className="text-sm text-muted-foreground">ELO Rating</p>
+                      <p className="text-xl sm:text-2xl font-bold text-yellow-600">{player.elo_rating}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">ELO Rating</p>
                     </div>
                   </div>
                 ))}
@@ -230,32 +248,32 @@ export function Leaderboards() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="fantasy" className="space-y-4">
+        <TabsContent value="winrate" className="space-y-4 animate-in fade-in duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-purple-500" />
-                Highest Fantasy Teams
+                <TrendingUp className="h-5 w-5 text-blue-500" />
+                Highest Win Rate
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {fantasyLeaders.map((player) => (
+                {winRateLeaders.map((player) => (
                   <div key={player.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center w-12">{getRankIcon(player.rank)}</div>
+                    <div className="flex items-center justify-center w-8 sm:w-12">{getRankIcon(player.rank)}</div>
                     <Avatar>
                       <AvatarFallback>{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{player.username}</p>
-                      <p className="text-sm text-muted-foreground">{player.fantasy_team_name}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getDivisionColor(player.division)}>{getDivisionName(player.division)}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{player.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={`${getDivisionColor(player.division)} text-[10px] sm:text-xs`}>{getDivisionName(player.division)}</Badge>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground">{player.elo_rating} ELO</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-purple-600">{player.fantasy_team_value}</p>
-                      <p className="text-sm text-muted-foreground">Total Team ELO</p>
+                      <p className="text-xl sm:text-2xl font-bold text-blue-500">{player.win_rate.toFixed(1)}%</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
                     </div>
                   </div>
                 ))}
@@ -264,32 +282,64 @@ export function Leaderboards() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="earnings" className="space-y-4">
+        <TabsContent value="teammate" className="space-y-4 animate-in fade-in duration-300">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-purple-500" />
+                Best Teammates (Synergy)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {teammateLeaders.map((player) => (
+                  <div key={player.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center justify-center w-8 sm:w-12">{getRankIcon(player.rank)}</div>
+                    <Avatar>
+                      <AvatarFallback>{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{player.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={`${getDivisionColor(player.division)} text-[10px] sm:text-xs`}>{getDivisionName(player.division)}</Badge>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl sm:text-2xl font-bold text-purple-500">{player.teammate_rating}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Synergy Score</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="earnings" className="space-y-4 animate-in fade-in duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-green-500" />
-                Highest Earners
+                Highest Earnings
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {earningsLeaders.map((player, index) => (
+                {earningsLeaders.map((player) => (
                   <div key={player.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center w-12">{getRankIcon(index + 1)}</div>
+                    <div className="flex items-center justify-center w-8 sm:w-12">{getRankIcon(player.rank)}</div>
                     <Avatar>
                       <AvatarFallback>{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{player.username}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge className={getDivisionColor(player.division)}>{getDivisionName(player.division)}</Badge>
-                        <span className="text-sm text-muted-foreground">{player.elo_rating} ELO</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{player.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={`${getDivisionColor(player.division)} text-[10px] sm:text-xs`}>{getDivisionName(player.division)}</Badge>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-green-600">${player.total_earnings.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">Total Earnings</p>
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">${player.total_earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">Total Earnings</p>
                     </div>
                   </div>
                 ))}

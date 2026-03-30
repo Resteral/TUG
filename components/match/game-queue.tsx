@@ -70,23 +70,18 @@ export function GameQueue({ game }: GameQueueProps) {
         checkQueue()
     }, [user])
 
-    const [currentEntryFee, setCurrentEntryFee] = useState<number>(5)
-
-    const handleQueueAction = async (entryFee?: number) => {
+    const handleQueueAction = async () => {
         if (!user) return
         setQueueLoading(true)
         try {
             if (inQueue) {
-                await lobbyQueueService.leaveQueue(user.id, currentEntryFee)
+                await lobbyQueueService.leaveQueue(user.id, 0)
                 setInQueue(false)
                 toast.info("Left queue")
             } else {
-                const fee = entryFee || 5
-                setCurrentEntryFee(fee)
-                // Default to 4v4 Snake Draft for now as per requirements
-                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4, fee)
+                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4, 0)
                 setInQueue(true)
-                toast.success(`Joined ${fee === 5 ? 'Standard' : 'Premier'} Arena ($${fee})!`)
+                toast.success(`Joined Ranked Arena Matchmaking!`)
             }
         } catch (error: any) {
             console.error(error)
@@ -167,25 +162,14 @@ export function GameQueue({ game }: GameQueueProps) {
                         </div>
                         
                         {!inQueue ? (
-                            <div className="grid grid-cols-5 gap-2">
-                                {[5, 10, 25, 50, 100].map((fee) => (
-                                    <Button
-                                        key={fee}
-                                        onClick={() => handleQueueAction(fee)}
-                                        disabled={queueLoading}
-                                        variant="outline"
-                                        className={`h-14 flex flex-col items-center justify-center border-white/10 hover:border-primary/50 hover:bg-primary/5 transition-all group/btn rounded-xl overflow-hidden relative`}
-                                    >
-                                        <span className="text-xs text-muted-foreground font-mono group-hover/btn:text-primary transition-colors">Entry</span>
-                                        <span className="text-sm font-black text-white italic tracking-tighter">${fee}</span>
-                                        {fee >= 50 && (
-                                            <div className="absolute top-0 right-0 p-1">
-                                                <div className="size-1 rounded-full bg-amber-500 shadow-[0_0_5px_rgba(245,158,11,0.5)]" />
-                                            </div>
-                                        )}
-                                    </Button>
-                                ))}
-                            </div>
+                            <Button
+                                onClick={() => handleQueueAction()}
+                                disabled={queueLoading}
+                                variant="outline"
+                                className="w-full h-14 bg-primary/10 hover:bg-primary/20 border-primary/30 text-primary font-black uppercase italic tracking-widest rounded-xl transition-all"
+                            >
+                                Deploy to Ranked Matchmaking
+                            </Button>
                         ) : (
                             <Button
                                 onClick={() => handleQueueAction()}
@@ -232,7 +216,7 @@ export function GameQueue({ game }: GameQueueProps) {
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="size-12 rounded-xl bg-black/40 border border-white/5 flex items-center justify-center font-black text-primary italic tracking-tighter">
-                                            ${match.entry_fee}
+                                            <Trophy className="size-5" />
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">

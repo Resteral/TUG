@@ -38,6 +38,13 @@ export function ReadyCheckModal({ userId }: { userId: string }) {
                 setTotalPlayers(tournament.max_participants)
                 setOpen(true)
                 setStatus("pending")
+                
+                // Play matchmaking POP sound
+                try {
+                    const queuePopAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3")
+                    queuePopAudio.volume = 0.5
+                    queuePopAudio.play()
+                } catch(e) { console.error("Could not play ready check sound", e) }
             }
         }
 
