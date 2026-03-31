@@ -1,137 +1,176 @@
 
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- TUG ARENA - COMPLETE SBMM SCHEMA
+-- consolidates core wagering, matchmaking queue, and StarCraft identity mapping.
 
--- USERS TABLE
-create table if not exists public.users (
-  id uuid references auth.users not null primary key,
-  username text unique,
-  avatar_url text,
-  balance numeric default 0.00 not null check (balance >= 0),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 1. UTILITIES
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. CORE USERS
+-- Includes 'account_id' for StarCraft ID mapping
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password_hash TEXT,
+    account_id TEXT UNIQUE,
+    role TEXT DEFAULT 'user',
+    avatar_url TEXT,
+    elo_rating INTEGER NOT NULL DEFAULT 1000,
+    balance NUMERIC DEFAULT 0.00,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    total_games INTEGER DEFAULT 0,
+    -- Compliance / Ledger (KYC/AML)
+    kyc_status TEXT DEFAULT 'unverified',
+    age_verified BOOLEAN DEFAULT false,
+    region_allowed BOOLEAN DEFAULT true,
+    aml_flagged BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-alter table public.users enable row level security;
-
-create policy "Public profiles are viewable by everyone." on public.users
-  for select using (true);
-
-create policy "Users can insert their own profile." on public.users
-  for insert with check (auth.uid() = id);
-
-create policy "Users can update own profile." on public.users
-  for update using (auth.uid() = id);
-
--- TRANSACTIONS TABLE
--- Create types safely
-do $$ begin
-    create type transaction_type as enum ('deposit', 'withdrawal', 'wager_lock', 'wager_payout', 'refund');
-exception
-    when duplicate_object then null;
-end $$;
-
-do $$ begin
-    create type transaction_status as enum ('pending', 'completed', 'failed');
-exception
-    when duplicate_object then null;
-end $$;
-
-do $$ begin
-    create type payment_provider as enum ('stripe', 'crypto', 'platform');
-exception
-    when duplicate_object then null;
-end $$;
-
-create table if not exists public.transactions (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.users(id) not null,
-  amount numeric not null,
-  type transaction_type not null,
-  provider payment_provider not null,
-  status transaction_status default 'pending' not null,
-  external_id text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 3. FINANCIAL LEDGER
+CREATE TABLE IF NOT EXISTS public.transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    amount NUMERIC NOT NULL,
+    type TEXT NOT NULL, -- 'deposit', 'withdrawal', 'tournament_fee', 'tournament_payout'
+    status TEXT DEFAULT 'completed',
+    reference_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-alter table public.transactions enable row level security;
-
-create policy "Users can view own transactions." on public.transactions
-  for select using (auth.uid() = user_id);
-
--- MATCHES TABLE (Create table first)
-do $$ begin
-    create type match_status as enum ('open', 'in_progress', 'completed', 'disputed', 'cancelled');
-exception
-    when duplicate_object then null;
-end $$;
-
-create table if not exists public.matches (
-  id uuid default uuid_generate_v4() primary key,
-  creator_id uuid references public.users(id) not null,
-  wager_amount numeric not null check (wager_amount >= 0),
-  team_size int not null check (team_size between 1 and 6),
-  status match_status default 'open' not null,
-  winner_team_id int,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 4. MATCHMAKING QUEUE (Lobby waitlist)
+CREATE TABLE IF NOT EXISTS public.lobby_queue (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    queue_type TEXT NOT NULL, -- 'maxed', 'unmaxed'
+    game_format TEXT NOT NULL, -- 'snake_draft', etc.
+    player_count INTEGER NOT NULL,
+    elo_rating INTEGER NOT NULL,
+    entry_fee NUMERIC DEFAULT 0.00,
+    status TEXT DEFAULT 'waiting', -- 'waiting', 'matched', 'cancelled'
+    joined_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-alter table public.matches enable row level security;
-
--- MATCH PARTICIPANTS TABLE (Create table next)
-create table if not exists public.match_participants (
-  match_id uuid references public.matches(id) not null,
-  user_id uuid references public.users(id) not null,
-  team_id int not null check (team_id in (1, 2)),
-  status text default 'joined',
-  joined_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  primary key (match_id, user_id)
+-- 5. MATCHMAKING ARENAS / TOURNAMENTS
+CREATE TABLE IF NOT EXISTS public.tournaments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    game TEXT NOT NULL,
+    tournament_type TEXT NOT NULL,
+    max_participants INTEGER NOT NULL,
+    prize_pool NUMERIC DEFAULT 0.00,
+    player_pool_settings JSONB DEFAULT '{}'::JSONB,
+    created_by UUID REFERENCES public.users(id),
+    status TEXT NOT NULL DEFAULT 'registration', -- 'registration', 'ready_check', 'drafting', 'active', 'completed'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-alter table public.match_participants enable row level security;
+-- 6. ARENA PARTICIPANTS
+CREATE TABLE IF NOT EXISTS public.tournament_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID REFERENCES public.tournaments(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'pending_ready', 'ready', 'active', 'eliminated'
+    joined_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- NOW ADD POLICIES FOR MATCHES (Since participant table exists)
-create policy "Matches are viewable by everyone." on public.matches
-  for select using (true);
+-- 7. GENERIC MATCHES (Used by some UI components for match histories)
+CREATE TABLE IF NOT EXISTS public.matches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID REFERENCES public.tournaments(id) ON DELETE CASCADE,
+    game TEXT NOT NULL,
+    status TEXT DEFAULT 'open',
+    team_size INTEGER DEFAULT 4,
+    created_by UUID REFERENCES public.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-create policy "Authenticated users can create matches." on public.matches
-  for insert with check (auth.role() = 'authenticated');
+-- 8. ARENA MATCH PARTICIPANTS (Used for MatchRoom logic)
+CREATE TABLE IF NOT EXISTS public.match_participants (
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL CHECK (team_id IN (1, 2)),
+    status TEXT DEFAULT 'joined',
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (match_id, user_id)
+);
 
-create policy "Participants can update match status." on public.matches
-  for update using (
-    exists (
-      select 1 from public.match_participants
-      where match_id = matches.id and user_id = auth.uid()
-    )
-  );
+-- 9. ADVANCED ANALYTICS
+CREATE TABLE IF NOT EXISTS public.player_advanced_stats (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE UNIQUE,
+    username TEXT,
+    elo_rating INTEGER DEFAULT 1000,
+    matches_played INTEGER DEFAULT 0,
+    avg_kills NUMERIC DEFAULT 0,
+    avg_deaths NUMERIC DEFAULT 0,
+    avg_assists NUMERIC DEFAULT 0,
+    avg_damage NUMERIC DEFAULT 0,
+    avg_accuracy NUMERIC DEFAULT 0,
+    win_percentage NUMERIC DEFAULT 0,
+    total_mvp_votes INTEGER DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- POLICIES FOR PARTICIPANTS
-create policy "Participants are viewable by everyone." on public.match_participants
-  for select using (true);
+CREATE TABLE IF NOT EXISTS public.player_streaks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    streak_type TEXT NOT NULL, -- 'win', 'mvp', 'loss'
+    current_streak INTEGER DEFAULT 0,
+    best_streak INTEGER DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, streak_type)
+);
 
-create policy "Users can join matches." on public.match_participants
-  for insert with check (auth.uid() = user_id);
+-- 10. SCORE SUBMISSIONS (For CSV stat importing)
+CREATE TABLE IF NOT EXISTS public.score_submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE,
+    submitter_id UUID REFERENCES public.users(id),
+    team1_score INTEGER,
+    team2_score INTEGER,
+    winner_team INTEGER,
+    csv_code TEXT,
+    status TEXT DEFAULT 'pending', -- 'pending', 'confirmed', 'disputed'
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Trigger definition
-create or replace function update_modified_column()
-returns trigger as $$
-begin
-    new.updated_at = now();
-    return new; 
-end;
-$$ language 'plpgsql';
+-- 11. MATCH RESULTS (Finalized outcomes)
+CREATE TABLE IF NOT EXISTS public.match_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE UNIQUE,
+    team1_score INTEGER,
+    team2_score INTEGER,
+    winner_team INTEGER,
+    csv_code TEXT,
+    total_submissions INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-drop trigger if exists update_matches_modtime on public.matches;
-create trigger update_matches_modtime
-    before update on public.matches
-    for each row execute procedure update_modified_column();
+-- 12. UTILITY FUNCTIONS
+CREATE OR REPLACE FUNCTION increment_balance(target_user_id UUID, amount NUMERIC)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE public.users
+  SET balance = balance + amount
+  WHERE id = target_user_id;
+END;
+$$ LANGUAGE plpgsql;
 
--- ATOMIC BALANCE INCREMENT
-create or replace function increment_balance(user_id uuid, amount numeric)
-returns void as $$
-begin
-  update public.users
-  set balance = balance + amount
-  where id = user_id;
-end;
-$$ language plpgsql;
+-- 13. CONFIGURE RLS (ROW LEVEL SECURITY)
+-- Disabled for Custom Auth flow compatibility.
+ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lobby_queue DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tournaments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tournament_participants DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.matches DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.match_participants DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.player_advanced_stats DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.player_streaks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.score_submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.match_results DISABLE ROW LEVEL SECURITY;
