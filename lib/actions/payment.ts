@@ -2,7 +2,6 @@
 
 import { stripe } from "@/lib/stripe/client";
 import { createClient } from "@/lib/supabase/server";
-import { headers } from "next/headers";
 
 export async function createDepositSession(amount: number) {
     const supabase = await createClient();
