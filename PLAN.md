@@ -1,50 +1,38 @@
 
-# ZHT Wagering Platform Conversion Plan
+# TUG Arena - Production-Ready SBMM & Identity Mapping Plan
 
 ## Goal Description
-Convert the existing "ZHT" (Next.js/Supabase/Radix UI) template into a functionality-focused online wagering platform.
-The core feature is a **Matchmaking System** allowing users to wager on 1v1 up to 6v6 matches, supported by **Stripe & Crypto** payments.
+Transition the TUG platform from a generic wagering template to a specialized, production-ready **Skill-Based Matchmaking (SBMM)** environment for the StarCraft community. The system now prioritizes performance-based scaling and automated stat ingestion over simple wagering.
 
-## User Review Required
-> [!IMPORTANT]
-> **Match Verification**: I will implement a **"Self-Report + Confirmation"** system (Winner reports, Loser confirms or auto-confirms after timeout). Disputes go to a manual admin queue.
-> **Crypto Implementation**: For MVP, I will assume a "Deposit to Platform Balance" model (similar to Stripe), rather than direct on-chain smart contract wagering.
+## Milestone Status: COMPLETED
+> [!NOTE]
+> **StarCraft Identity Mapping**: Users now link their StarCraft Account ID (SCID) to their TUG profile. This mapping is used as the "Key" for all performance analytics.
+> **Automated Stat Ingestion**: Match results are determined by importing CSV archives from the SC2 Mod. Stats (Goals, Assists, etc.) are automatically mapped to participants.
+> **SBMM Infrastructure**: Matchmaking thresholds are set to production-level tournament sizes (e.g., 4v4 = 8 players).
+> **Archive Intel Dashboard**: A premium, real-time analytics dashboard provides a deep-dive into combat history and efficiency indices.
 
-## Proposed Changes
+## Implemented Infrastructure
 
-### Database Schema (Supabase)
-- **`users`**: Extends auth, adds `balance` (numeric, USD equivalent).
-- **`transactions`**:
-    - `id`, `user_id`, `amount`, `type` (deposit, withdrawal, wager_lock, wager_payout), `provider` (stripe, crypto), `status`, `external_id`.
-- **`matches`**:
-    - `id`, `creator_id`, `wager_amount`, `team_size` (1-6), `status` (open, in_progress, completed, disputed).
-    - `result` (winner_team_id).
-- **`match_participants`**:
-    - `match_id`, `user_id`, `team_id` (1 or 2).
+### Match Verification & Mapping
+- **CSV Import Engine**: In `MatchRoom`, users can paste CSV game data.
+- **Identity Resolver**: The `CSVStatsService` maps SCID strings in the CSV to TUG usernames via the `account_id` field in the `users` table.
+- **Archive Persistance**: Every reported match now includes a source CSV code for permanent historical record-keeping.
 
-### Backend (Server Actions / API)
-- **`actions/match.ts`**:
-    - `createMatch`: Locks funds from balance.
-    - `joinMatch`: Locks funds.
-    - `reportResult`: Transfers locked funds to winner (minus platform fee?).
-- **`actions/payment.ts`**:
-    - `createStripeSession`: Initiates deposit.
-    - `handleCryptoDeposit`: Records incoming crypto tx (mocked/manual for MVP).
+### Skill-Based Matchmaking (SBMM)
+- **Production Thresholds**: Matchmaking nodes (e.g., 4v4 Snake Draft) require a full lobby of 8 players to trigger a "Ready Check".
+- **ELO-Based Pairing**: Players are sorted by skill rating (ELO) to ensure balanced teams within the queue.
+- **Zero-Fee Protocol**: TUG currently operates on a skill-only basis with 0 entry fees for standard ranked nodes.
 
-### Frontend Components
-- **`MatchList`**: Filterable grid of open challenges.
-- **`MatchRoom`**: Real-time lobby.
-- **`WalletPage`**:
-    - "Deposit with Stripe" button.
-    - "Deposit with Crypto" (Display wallet address / QR).
-    - Balance History.
+### Security & Compliance (RLS Preparation)
+- **RLS Status**: Row Level Security is currently **disabled** across core tables to maintain compatibility with the custom Next.js authentication provider.
+- **Transition Plan**: Scripts are prepared to re-enable RLS once granular policies for `service_role` access are finalized.
 
-## Verification Plan
-### Automated Tests
-- Test balance locking logic (ensure funds cannot be spent twice).
-### Manual Verification
-- **Payment Flow**:
-    - Test Stripe Mock Mode.
-    - Manually adjust `users.balance` to simulate Crypto deposit.
-- **Game Flow**:
-    - Full 1v1 cycle with funds.
+## Next Steps for Scale
+1. **Global Leaderboard Expansion**: Integrate aggregated CSV stats (Goals/Saves) into the primary leaderboard ELO calculation.
+2. **Automated File Monitoring**: Replace manual CSV pasting with a client-side file watcher (or automated upload) for SC2 Replay folders.
+3. **Admin Dispute Console**: Implement a manual review dashboard for matches where the CSV data is disputed or malformed.
+4. **RLS Hardening**: Apply granular policies to the `users` and `tournament_participants` tables.
+
+---
+*Created: 2026-03-31*
+*Version: 2.0.0 (Production Core)*

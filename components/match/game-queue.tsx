@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { joinMatch } from "@/lib/actions/match"
-import { GameConfig, GameMode, getAllowedModesForGame } from "@/lib/game-config"
+import { GameConfig, GameMode, getAllowedModesForGame, GAME_MODES } from "@/lib/game-config"
 import { Users, Trophy, Clock, PlayCircle, Loader2, XCircle, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { readyCheckService } from "@/lib/services/ready-check-service"
@@ -23,6 +23,10 @@ export function GameQueue({ game }: GameQueueProps) {
     const [matches, setMatches] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
+    const router = useRouter()
+    const { user } = useAuth()
+    const [inQueue, setInQueue] = useState(false)
+    const [queueLoading, setQueueLoading] = useState(false)
 
     useEffect(() => {
         async function load() {
@@ -51,11 +55,6 @@ export function GameQueue({ game }: GameQueueProps) {
         }
     }, [game.id])
 
-    const router = useRouter()
-    const { user } = useAuth()
-    const [inQueue, setInQueue] = useState(false)
-    const [queueLoading, setQueueLoading] = useState(false)
-
     useEffect(() => {
         if (!user) return
         const checkQueue = async () => {
@@ -70,6 +69,11 @@ export function GameQueue({ game }: GameQueueProps) {
         checkQueue()
     }, [user])
 
+    const allowedModes = getAllowedModesForGame(game.id)
+    const defaultModeId = game.defaultMode || allowedModes[0]?.id || "1v1"
+    const currentMode = GAME_MODES[defaultModeId]
+    const playerCount = currentMode?.players || 2
+
     const handleQueueAction = async () => {
         if (!user) return
         setQueueLoading(true)
@@ -79,9 +83,11 @@ export function GameQueue({ game }: GameQueueProps) {
                 setInQueue(false)
                 toast.info("Left queue")
             } else {
-                await lobbyQueueService.joinQueue(user.id, "unmaxed", "snake_draft", 4, 0)
+                // Determine format and count dynamically from game config
+                const format = (currentMode?.matchType as any) || "snake_draft"
+                await lobbyQueueService.joinQueue(user.id, "unmaxed", format, playerCount / 2, 0)
                 setInQueue(true)
-                toast.success(`Joined Ranked Arena Matchmaking!`)
+                toast.success(`Joined Ranked ${game.name} Matchmaking!`)
             }
         } catch (error: any) {
             console.error(error)
@@ -92,26 +98,16 @@ export function GameQueue({ game }: GameQueueProps) {
         }
     }
 
-    const allowedModes = getAllowedModesForGame(game.id)
-
     if (loading) {
         return (
-            <Card className={`${game.color} bg-opacity-10 border-2`}>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <span className="text-2xl">{game.icon}</span>
-                        {game.name}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
-                </CardContent>
-            </Card>
+            <div className="flex items-center justify-center h-64 bg-black/20 rounded-3xl animate-pulse border border-white/5">
+                <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+            </div>
         )
     }
 
     return (
-        <Card className="group border-white/5 bg-white/[0.02] backdrop-blur-xl overflow-hidden relative shadow-2xl transition-all duration-500 hover:border-primary/30 hover:bg-white/[0.04]">
+        <Card className="group border-white/5 bg-white/[0.02] backdrop-blur-xl overflow-hidden relative shadow-2xl transition-all duration-500 hover:border-primary/30 hover:bg-white/[0.04] rounded-3xl">
             {/* Background Accent Glow */}
             <div className={`absolute -top-20 -right-20 size-64 bg-primary/10 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
             
@@ -125,23 +121,23 @@ export function GameQueue({ game }: GameQueueProps) {
                             <CardTitle className="text-2xl font-black text-white uppercase italic tracking-tighter">
                                 {game.name}
                             </CardTitle>
-                            <p className="text-sm text-muted-foreground font-medium">{game.description}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">Strategic Engagement Module</p>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex gap-2">
-                            {allowedModes.map((mode) => (
+                            {allowedModes.slice(0, 3).map((mode) => (
                                 <Badge 
                                     key={mode.id} 
-                                    className={`bg-white/5 border-white/10 text-white font-black italic tracking-widest text-[10px] uppercase px-3 py-1 rounded-lg ${mode.color.replace('bg-', 'text-')}`}
+                                    className={`bg-white/5 border-white/10 text-white font-black italic tracking-widest text-[8px] uppercase px-2 py-0.5 rounded-md ${mode.color.replace('bg-', 'text-')}`}
                                 >
                                     {mode.name}
                                 </Badge>
                             ))}
                         </div>
                         {inQueue && (
-                            <Badge className="bg-primary/20 text-primary border-primary/30 animate-pulse font-bold italic tracking-tighter">
+                            <Badge className="bg-primary/20 text-primary border-primary/30 animate-pulse font-black italic tracking-tighter text-[10px] uppercase">
                                 DEPLOYED IN QUEUE
                             </Badge>
                         )}
@@ -156,9 +152,9 @@ export function GameQueue({ game }: GameQueueProps) {
                         <div className="flex items-center justify-between px-2">
                             <span className="text-[10px] uppercase font-black tracking-[0.2em] text-muted-foreground italic flex items-center gap-2">
                                 <Zap className="size-3 text-primary" />
-                                Select Entry Protocol
+                                Initiate Protocol
                             </span>
-                            <span className="text-[10px] uppercase font-mono text-primary/70">4v4 SNAKE DRAFT</span>
+                            <span className="text-[10px] uppercase font-mono text-primary/70">{currentMode?.name} {currentMode?.matchType?.replace('_', ' ')}</span>
                         </div>
                         
                         {!inQueue ? (

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Wallet, CreditCard, Bitcoin, History, ArrowDownToLine, ArrowUpFromLine, Info, Lock as LockIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -105,44 +106,59 @@ export default function WalletPage() {
 
     return (
         <div className="container mx-auto p-4 max-w-5xl space-y-8 pb-20">
-            <header className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
-                    <ChevronLeft className="w-5 h-5" />
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Financial Hub</h1>
-                    <p className="text-muted-foreground text-sm">Manage your platform balance and wagering history.</p>
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-3">
+                         <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                            <Wallet className="h-6 w-6 text-primary" />
+                         </div>
+                         <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white">Credit Ledger</h1>
+                    </div>
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest opacity-60">Secure Financial Protocol & Transaction Archives</p>
                 </div>
+                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary px-4 py-1 rounded-full font-black uppercase italic tracking-widest text-[10px]">Active Node: v4.2.0</Badge>
             </header>
 
-            <div className="grid lg:grid-cols-3 gap-8">
+            <div className="grid lg:grid-cols-3 gap-8 pb-32">
                 {/* Balance & Quick Actions */}
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/30 via-primary/5 to-transparent border border-primary/20 p-8 md:p-12 shadow-2xl">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 select-none">
-                            <Wallet className="size-48 -mr-12 -mt-12 text-primary" />
+                    <div className="relative overflow-hidden rounded-[2.5rem] bg-black/40 border border-white/10 p-12 shadow-2xl backdrop-blur-3xl group">
+                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-1000">
+                            <Wallet className="size-64 -mr-20 -mt-20 text-white" />
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                            <div>
-                                <p className="text-sm font-medium text-primary/70 mb-2 flex items-center gap-2">
-                                    <span className="size-2 bg-green-500 rounded-full animate-pulse" />
-                                    Available Balance
-                                </p>
-                                <h2 className="text-5xl md:text-6xl font-black tracking-tight text-white font-mono">
-                                    ${balance.toFixed(2)}
-                                </h2>
+                        <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] italic">Available Combat Merit</span>
+                                    <h2 className="text-7xl md:text-8xl font-black tracking-tighter text-white italic drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                        <span className="text-3xl align-top mr-1 opacity-50">$</span>{balance.toFixed(2)}
+                                    </h2>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-500/10 border border-green-500/20">
+                                        <div className="size-1.5 bg-green-500 rounded-full animate-pulse" />
+                                        <span className="text-[9px] font-black text-green-500 uppercase italic tracking-widest">Vault Active</span>
+                                     </div>
+                                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 border border-primary/20">
+                                        <LockIcon className="size-3 text-primary" />
+                                        <span className="text-[9px] font-black text-primary uppercase italic tracking-widest">Encrypted</span>
+                                     </div>
+                                </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-lg shadow-primary/20">
+                            <div className="flex gap-4 w-full md:w-auto">
+                                <Button size="lg" className="flex-1 md:flex-none h-16 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase italic tracking-widest px-10 rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95">
                                     <ArrowDownToLine className="mr-2 size-5" />
-                                    Deposit
+                                    Fund
                                 </Button>
-                                <Button size="lg" variant="outline" className="border-white/10 hover:bg-white/5 font-bold px-8">
+                                <Button size="lg" variant="outline" className="flex-1 md:flex-none h-16 border-white/10 hover:bg-white/5 font-black uppercase italic tracking-widest px-10 rounded-2xl backdrop-blur-xl transition-all hover:scale-105 active:scale-95">
                                     <ArrowUpFromLine className="mr-2 size-5" />
-                                    Withdraw
+                                    Extract
                                 </Button>
                             </div>
                         </div>
+                        {/* Glow Accents */}
+                        <div className="absolute top-0 left-0 size-64 bg-primary/20 blur-[100px] opacity-30 select-none pointer-events-none" />
+                        <div className="absolute bottom-0 right-0 size-64 bg-purple-500/10 blur-[100px] opacity-30 select-none pointer-events-none" />
                     </div>
 
                     <Tabs defaultValue="deposit" className="w-full">

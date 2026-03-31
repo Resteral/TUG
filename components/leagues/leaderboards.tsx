@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trophy, Star, DollarSign, Medal, Crown, TrendingUp, Users } from "lucide-react"
+import { Trophy, Star, DollarSign, Medal, Crown, TrendingUp, Users, Target, Activity } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { CSVStatsService, CSVPlayerStats } from "@/lib/services/csv-stats-service"
 
 interface LeaderboardEntry {
   id: string
@@ -17,6 +18,8 @@ interface LeaderboardEntry {
   teammate_rating: number
   division: string
   rank: number
+  goals?: number
+  assists?: number
 }
 
 export function Leaderboards() {
@@ -24,6 +27,7 @@ export function Leaderboards() {
   const [earningsLeaders, setEarningsLeaders] = useState<LeaderboardEntry[]>([])
   const [winRateLeaders, setWinRateLeaders] = useState<LeaderboardEntry[]>([])
   const [teammateLeaders, setTeammateLeaders] = useState<LeaderboardEntry[]>([])
+  const [archiveLeaders, setArchiveLeaders] = useState<CSVPlayerStats[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createClient()
@@ -55,7 +59,11 @@ export function Leaderboards() {
         setEloLeaders(eloLeaders)
       }
 
-      // 2. Load highest earners
+      // 2. Load CSV Statistics (Archive Pro Leaders)
+      const csvData = await CSVStatsService.getPlayerCSVStats(supabase)
+      setArchiveLeaders(csvData.sort((a,b) => (b.goals + b.assists) - (a.goals + a.assists)).slice(0, 20))
+
+      // 3. Load highest earners
       const { data: earnersProfiles } = await supabase
         .from("users")
         .select("id, username, elo_rating")
@@ -208,44 +216,82 @@ export function Leaderboards() {
       </div>
 
       <Tabs defaultValue="elo" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="elo" className="text-xs sm:text-sm">Highest ELO</TabsTrigger>
-          <TabsTrigger value="winrate" className="text-xs sm:text-sm">Win Rate</TabsTrigger>
-          <TabsTrigger value="teammate" className="text-xs sm:text-sm">Best Teammate</TabsTrigger>
-          <TabsTrigger value="earnings" className="text-xs sm:text-sm">Highest Earnings</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-black/40 border border-white/5 backdrop-blur-xl rounded-2xl">
+          <TabsTrigger value="elo" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase italic text-[10px] tracking-widest py-3 rounded-xl">Highest ELO</TabsTrigger>
+          <TabsTrigger value="archives" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase italic text-[10px] tracking-widest py-3 rounded-xl">Arena Pro</TabsTrigger>
+          <TabsTrigger value="winrate" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase italic text-[10px] tracking-widest py-3 rounded-xl">Win Rate</TabsTrigger>
+          <TabsTrigger value="teammate" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase italic text-[10px] tracking-widest py-3 rounded-xl">Best Synergy</TabsTrigger>
+          <TabsTrigger value="earnings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase italic text-[10px] tracking-widest py-3 rounded-xl">Earnings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="elo" className="space-y-4 animate-in fade-in duration-300">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                Highest ELO Players
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+           <div className="grid gap-4">
                 {eloLeaders.map((player) => (
-                  <div key={player.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-center w-8 sm:w-12">{getRankIcon(player.rank)}</div>
-                    <Avatar>
-                      <AvatarFallback>{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{player.username}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge className={`${getDivisionColor(player.division)} text-[10px] sm:text-xs`}>{getDivisionName(player.division)}</Badge>
-                      </div>
+                  <div key={player.id} className="group flex items-center justify-between p-5 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-primary/20 rounded-2xl transition-all duration-300">
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center justify-center w-10">{getRankIcon(player.rank)}</div>
+                        <Avatar className="size-12 border border-white/10 group-hover:scale-105 transition-transform">
+                            <AvatarFallback className="bg-primary/10 text-primary font-black italic">{player.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-black text-white uppercase italic tracking-tighter text-lg">{player.username}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Badge className={`${getDivisionColor(player.division)} text-[8px] font-black uppercase py-0 px-2 rounded-md`}>{getDivisionName(player.division)}</Badge>
+                            </div>
+                        </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl sm:text-2xl font-bold text-yellow-600">{player.elo_rating}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">ELO Rating</p>
+                      <p className="text-2xl font-black text-white italic leading-none">{player.elo_rating}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-primary italic mt-1">Combat Index</p>
                     </div>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
+           </div>
+        </TabsContent>
+
+        <TabsContent value="archives" className="space-y-4 animate-in fade-in duration-300">
+           <Card className="border-white/5 bg-black/40 backdrop-blur-3xl rounded-3xl overflow-hidden">
+                <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-xl font-black text-white uppercase italic tracking-tighter">
+                        <Target className="size-5 text-primary" />
+                        Arena Pro Archive Leaders
+                    </CardTitle>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground italic">Global goal & assistance metrics from all valid StarCraft archives.</p>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="divide-y divide-white/5">
+                        {archiveLeaders.length === 0 ? (
+                            <div className="p-20 text-center text-muted-foreground italic opacity-30 font-black uppercase text-xs tracking-widest">No archives ingested</div>
+                        ) : (
+                            archiveLeaders.map((stat, i) => (
+                                <div key={i} className="flex items-center justify-between p-6 hover:bg-white/[0.03] transition-colors group">
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex items-center justify-center w-10 font-black text-muted-foreground italic text-lg">#{i+1}</div>
+                                        <div>
+                                            <h4 className="font-black text-white uppercase italic tracking-tighter text-base group-hover:text-primary transition-colors">{stat.username || stat.accountId}</h4>
+                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{stat.gamesPlayed} Archive Instances Mapped</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-12">
+                                        <div className="text-center">
+                                            <div className="text-xl font-black text-white italic leading-none">{stat.goals}</div>
+                                            <span className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">Total Goals</span>
+                                        </div>
+                                        <div className="text-center border-l border-white/5 pl-12">
+                                            <div className="text-xl font-black text-white italic leading-none">{stat.assists}</div>
+                                            <span className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">Assists</span>
+                                        </div>
+                                        <div className="text-center border-l border-white/5 pl-12">
+                                            <div className="text-xl font-black text-primary italic leading-none">{(stat.goals + stat.assists + stat.saves)}</div>
+                                            <span className="text-[9px] font-black text-muted-foreground uppercase italic tracking-widest">Total Impact</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+           </Card>
         </TabsContent>
 
         <TabsContent value="winrate" className="space-y-4 animate-in fade-in duration-300">

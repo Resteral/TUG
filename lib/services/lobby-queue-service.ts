@@ -159,10 +159,7 @@ export const lobbyQueueService = {
 
     // For maxed queues, need exact player count
     // For unmaxed queues, can start with minimum players
-    const canStart =
-      queueType === "maxed"
-        ? currentPlayers >= requiredPlayers
-        : currentPlayers >= 1 // Lowered strictly for solo DEV testing so you can see the queue pop
+    const canStart = currentPlayers >= requiredPlayers
 
     if (!canStart || !queuedUsers) {
       return null
