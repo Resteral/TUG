@@ -152,6 +152,8 @@ CREATE TABLE IF NOT EXISTS public.match_results (
 );
 
 -- 12. UTILITY FUNCTIONS
+DROP FUNCTION IF EXISTS public.increment_balance(UUID, NUMERIC);
+
 CREATE OR REPLACE FUNCTION increment_balance(target_user_id UUID, amount NUMERIC)
 RETURNS VOID AS $$
 BEGIN
