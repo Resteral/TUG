@@ -159,7 +159,7 @@ export async function joinMatch(matchId: string, teamId: number) {
     return { success: true }
 }
 
-export async function reportResult(matchId: string, winnerTeamId: number) {
+export async function reportResult(matchId: string, winnerTeamId: number, csvCode?: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: "Unauthorized" }
@@ -181,13 +181,22 @@ export async function reportResult(matchId: string, winnerTeamId: number) {
 
     if (!participant) return { error: "You are not a participant" }
 
+    // 2. Finalize Match Status
     const { error: updateError } = await supabase.from("matches").update({
         status: "completed",
         winner_team_id: winnerTeamId,
         updated_at: new Date().toISOString()
     }).eq("id", matchId)
 
-    if (updateError) return { error: "Failed to update match result" }
+    if (updateError) return { error: "Failed to update match status" }
+
+    // 3. Archive Results & CSV (Key Mapping Source)
+    await supabase.from("match_results").upsert({
+        match_id: matchId,
+        winner_team: winnerTeamId,
+        csv_code: csvCode || null,
+        created_at: new Date().toISOString()
+    })
 
     // 3. Payout Logic
     // Get all participants of winning team

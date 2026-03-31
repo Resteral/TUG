@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { updateProfile } from "@/lib/actions/profile"
-import { Gamepad2, RefreshCw, CheckCircle, SearchCode } from "lucide-react"
-import { SteamIcon } from "@/components/icons/steam-icon"
+import { Gamepad2, RefreshCw, CheckCircle, SearchCode, Loader2 } from "lucide-react"
 
 export function ProfileSettings() {
     const [loading, setLoading] = useState(false)
@@ -51,7 +50,7 @@ export function ProfileSettings() {
         })
 
         if (result?.success) {
-            toast.success("Profile links updated!")
+            toast.success("Profile mapping archived!")
         } else {
             toast.error(result?.error || "Failed to update links")
         }
@@ -60,12 +59,12 @@ export function ProfileSettings() {
 
     const handleBattleNetSync = () => {
         if (!accountId) {
-            toast.error("Please enter a valid Account ID (e.g. BattleTag#1234) first.")
+            toast.error("Please enter a valid StarCraft ID (e.g. 1-S2-...) first.")
             return
         }
 
         setIsSyncing(true)
-        // Simulate Battle.net API Data Sync
+        // Simulate StarCraft Folder Metadata Sync
         setTimeout(() => {
             setSyncedData({
                 bnetWins: Math.floor(Math.random() * 200) + 50,
@@ -73,85 +72,99 @@ export function ProfileSettings() {
                 syncedAt: new Date().toLocaleTimeString()
             })
             setIsSyncing(false)
-            toast.success("Successfully synchronized global Battle.net statistics for " + accountId)
+            toast.success("Archived identity mapping for SCID: " + accountId)
         }, 1800)
     }
 
     return (
-        <Card className="border-primary/20 bg-black/40 backdrop-blur-xl">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Gamepad2 className="w-5 h-5 text-primary" />
-                    Profile & Connections
+        <Card className="border-primary/20 bg-black/40 backdrop-blur-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+                 <Gamepad2 className="size-48 text-primary" />
+            </div>
+            <CardHeader className="relative z-10">
+                <CardTitle className="text-2xl font-black text-white uppercase italic tracking-tighter flex items-center gap-2">
+                    <Gamepad2 className="w-6 h-6 text-primary" />
+                    Identity & Mapping
                 </CardTitle>
-                <CardDescription>
-                    Customize your appearance and securely sync your external gaming data.
+                <CardDescription className="text-xs uppercase font-mono tracking-widest text-muted-foreground">
+                    Secure cross-platform performance tracking archives.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="username" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground italic">Arena Handle</Label>
                             <Input
                                 id="username"
                                 placeholder="Resteral"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="bg-primary/5 border-primary/10"
+                                className="bg-black/60 border-white/10 h-12 rounded-xl focus:border-primary/50 transition-all font-bold text-white italic"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="avatar">Avatar URL</Label>
+                            <Label htmlFor="avatar" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground italic">Avatar Endpoint</Label>
                             <Input
                                 id="avatar"
                                 placeholder="https://example.com/avatar.png"
                                 value={avatarUrl}
                                 onChange={(e) => setAvatarUrl(e.target.value)}
-                                className="bg-primary/5 border-primary/10"
+                                className="bg-black/60 border-white/10 h-12 rounded-xl focus:border-primary/50 transition-all font-mono text-xs"
                             />
                         </div>
                     </div>
 
-                    {/* BattleNet Dedicated Sync Box */}
-                    <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-4 shadow-inner">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <Label className="flex items-center gap-2 text-blue-400 font-bold">
-                                    <SearchCode className="size-4" />
-                                    Global Account Synchronization
-                                </Label>
-                                <p className="text-xs text-blue-200/50">
-                                    Link your central Account ID (or BattleTag) to instantly import your competitive history.
-                                </p>
-                            </div>
+                    {/* StarCraft Folder Identity Mapping Box */}
+                    <div className="p-4 rounded-3xl border border-primary/20 bg-primary/5 space-y-4 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
+                        {/* Background Accent */}
+                        <div className="absolute -top-10 -right-10 size-32 bg-primary/10 blur-3xl pointer-events-none group-hover:bg-primary/20 transition-colors" />
+                        
+                        <div className="space-y-1 relative z-10">
+                            <Label className="flex items-center gap-2 text-primary font-black uppercase italic tracking-tighter">
+                                <SearchCode className="size-4" />
+                                StarCraft Folder Mapping (SBMM Protocol)
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground italic leading-relaxed">
+                                Link your identity to automatically map results from imported CSV game data. Found in: 
+                                <span className="text-primary/70 font-mono block mt-1">Documents/StarCraft II/Accounts/...</span>
+                            </p>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3 relative z-10">
                             <Input
-                                placeholder="e.g. Resteral#1999"
+                                placeholder="e.g. 1-S2-1-5822233"
                                 value={accountId}
                                 onChange={(e) => setAccountId(e.target.value)}
-                                className="bg-black/40 border-blue-500/30 font-mono text-sm placeholder:text-blue-200/20"
+                                className="bg-black/60 border-primary/20 font-mono text-sm h-12 rounded-xl focus:border-primary/50 transition-all font-black text-primary uppercase italic"
                             />
                             <Button 
                                 type="button" 
                                 variant="outline" 
                                 onClick={handleBattleNetSync}
                                 disabled={isSyncing || !accountId}
-                                className="border-blue-500/30 hover:bg-blue-500/10 text-blue-400 whitespace-nowrap"
+                                className="border-primary/20 hover:bg-primary/10 text-primary h-12 px-6 rounded-xl font-black uppercase italic tracking-widest transition-all"
                             >
                                 {isSyncing ? <RefreshCw className="mr-2 size-4 animate-spin" /> : null}
-                                {isSyncing ? "Syncing API..." : "Verify & Sync"}
+                                {isSyncing ? "SYNCING..." : "MAP IDENTITY"}
                             </Button>
                         </div>
 
                         {syncedData && (
-                            <div className="bg-black/60 rounded p-3 text-xs font-mono text-blue-300 flex items-center justify-between border border-blue-500/10 animate-in fade-in zoom-in-95 duration-300">
-                                <span><CheckCircle className="size-3 inline mr-1 text-green-500" /> API Validated</span>
-                                <div className="flex gap-4">
-                                    <span>Lifetime Wins: <strong>{syncedData.bnetWins}</strong></span>
-                                    <span>K/D: <strong>{syncedData.bnetKD}</strong></span>
+                            <div className="bg-black/80 rounded-2xl p-4 text-[10px] font-black text-white uppercase italic tracking-widest flex items-center justify-between border border-primary/10 animate-in fade-in slide-in-from-top-2 duration-500 shadow-2xl">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="size-4 text-green-500" /> 
+                                    <span>Identity Validated</span>
+                                </div>
+                                <div className="flex gap-6">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-muted-foreground opacity-50">Arena Wins</span>
+                                        <span className="text-primary text-sm tracking-tighter">{syncedData.bnetWins}</span>
+                                    </div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-muted-foreground opacity-50">Skill Index</span>
+                                        <span className="text-primary text-sm tracking-tighter">{syncedData.bnetKD}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -160,10 +173,10 @@ export function ProfileSettings() {
 
                     <Button
                         type="submit"
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                        className="w-full h-14 bg-primary hover:bg-primary/80 text-primary-foreground font-black uppercase italic tracking-[0.2em] rounded-2xl shadow-2xl transition-all shadow-primary/20"
                         disabled={loading}
                     >
-                        {loading ? "Saving..." : "Save Profile Changes"}
+                        {loading ? <Loader2 className="animate-spin size-5" /> : "CONFIRM PROFILE ARCHIVE"}
                     </Button>
                 </form>
             </CardContent>

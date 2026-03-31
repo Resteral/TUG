@@ -125,6 +125,31 @@ CREATE TABLE IF NOT EXISTS public.player_streaks (
     UNIQUE(user_id, streak_type)
 );
 
+-- 10. SCORE SUBMISSIONS (For CSV stat importing)
+CREATE TABLE IF NOT EXISTS public.score_submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE,
+    submitter_id UUID REFERENCES public.users(id),
+    team1_score INTEGER,
+    team2_score INTEGER,
+    winner_team INTEGER,
+    csv_code TEXT,
+    status TEXT DEFAULT 'pending', -- 'pending', 'confirmed', 'disputed'
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 11. MATCH RESULTS (Finalized outcomes)
+CREATE TABLE IF NOT EXISTS public.match_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE UNIQUE,
+    team1_score INTEGER,
+    team2_score INTEGER,
+    winner_team INTEGER,
+    csv_code TEXT,
+    total_submissions INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- CONFIGURE RLS (ROW LEVEL SECURITY)
 -- We disable RLS on these core tables so the Custom Next.js Auth can seamlessly insert records.
 -- (If you switch back to native Supabase Auth, re-enable these and write granular policies).
@@ -137,3 +162,5 @@ ALTER TABLE public.tournament_participants DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.matches DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_advanced_stats DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_streaks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.score_submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.match_results DISABLE ROW LEVEL SECURITY;

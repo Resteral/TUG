@@ -28,9 +28,9 @@ export function GameQueue({ game }: GameQueueProps) {
         async function load() {
             setLoading(true)
             const { data } = await supabase
-                .from("matches")
-                .select("*, creator:users(username)")
-                .eq("status", "open")
+                .from("tournaments")
+                .select("*, creator:users!created_by(username)")
+                .eq("status", "registration")
                 .eq("game", game.id)
                 .order("created_at", { ascending: false })
 
@@ -41,7 +41,7 @@ export function GameQueue({ game }: GameQueueProps) {
 
         const channel = supabase
             .channel(`${game.id}-lobby`)
-            .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, () => {
+            .on("postgres_changes", { event: "*", schema: "public", table: "tournaments" }, () => {
                 load()
             })
             .subscribe()

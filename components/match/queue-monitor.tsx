@@ -26,7 +26,8 @@ export function QueueMonitor() {
                     { type: "unmaxed" as const, format: "auction_draft" as const, count: 4 },
                     { type: "maxed" as const, format: "auction_draft" as const, count: 4 },
                 ]
-                const entryFees = [5, 10, 25, 50, 100]
+                // TUG now uses 0 entry fee for all skill-based matchmaking nodes
+                const entryFees = [0]
 
                 for (const config of queueConfigs) {
                     for (const fee of entryFees) {
@@ -35,6 +36,7 @@ export function QueueMonitor() {
                 }
             } catch (err) {
                 // Silently suppress — this runs in the background
+                console.error("[QueueMonitor] Background poll error:", err)
             }
         }
 

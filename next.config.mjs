@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Ensure no eslint key is present
 }
 
 export default nextConfig

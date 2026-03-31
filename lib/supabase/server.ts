@@ -1,5 +1,4 @@
 import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 
 export const isSupabaseConfigured =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" &&
@@ -13,6 +12,7 @@ export const isSupabaseConfigured =
  * it.
  */
 export async function createClient() {
+  const { cookies } = await import("next/headers")
   const cookieStore = await cookies()
 
   return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
@@ -34,6 +34,7 @@ export async function createClient() {
 }
 
 export async function createAdminClient() {
+  const { createServerClient } = await import("@supabase/ssr")
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.STRIPE_SECRET_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY! : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // Fallback for local dev if service role missing
